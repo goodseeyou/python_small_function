@@ -3,6 +3,7 @@ import threading
 import time
 from StringIO import StringIO
 import random
+from urlparse import urlparse
 
 CURL_OPT_MAX_NUM_REDIRECT = 12
 CURL_OPT_USER_AGENT_LIST = [ 'Mozilla/5.0 (Windows NT 5.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2224.3 Safari/537.36', # Windows XP Chrome
@@ -24,7 +25,7 @@ KEY_CURL_HEADER_LOCATION = 'location'
 class DlerError(Exception): pass
 class Dler(object):
     def __init__(self, max_thread = 5, cache = None, header_cache = None):
-        self.max_thread = 5
+        self.max_thread = max_thread
         self.thread_pool = {}
         self.condition = threading.Condition()
         self.event = threading.Event()
@@ -79,8 +80,16 @@ class DlerThread(threading.Thread):
             self.content_dict[url], self.header_dict[url], http_code = self._curl(url)
             print http_code, url, self.header_dict[url]
             if KEY_CURL_HEADER_LOCATION in self.header_dict[url] and http_code >= 300 and http_code < 400:
-                next_url = self.header_dict[url][KEY_CURL_HEADER_LOCATION]
+                next_url = self._compose_url_from_location(url, self.header_dict[url][KEY_CURL_HEADER_LOCATION])
                 download_chain.append(next_url)
+
+    def _compose_url_from_location(self, url, location_url):
+        if location_url.startswith('http'):
+            return location_url
+
+        url_tok = urlparse(url)
+        return '%s://%s%s'%(url_tok.scheme, url_tok.netloc, location_url)
+        
 
     def _curl(self, url):
         string_buffer = StringIO()
@@ -121,7 +130,8 @@ class DlerThread(threading.Thread):
 if __name__ == '__main__':
     dler = Dler()
     #dler.download(['1', '2', '3', '4', '5'])
-    dler.download(['https://facebook.com', 'http://google.com'])
+    print time.time()
+    dler.download(['https://facebook.com', 'http://google.com', 'http://github.com', 'http://twitch.tv', 'http://paypal.com'])
     #print dler.cache
     #print dler.header_cache
-
+    print time.time()
