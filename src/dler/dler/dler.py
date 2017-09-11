@@ -37,30 +37,32 @@ class Dler(object):
             url_iterator = iter(url_iterable)
         except TypeError as e:
             raise DlerError(e)
+
         url_set = set(url_iterator)
+        user_agent_num = random.randint(0,LEN_USER_AGENT_LIST-1)
 
         while len(self.thread_pool) != 0 or len(url_set) != 0 :
             _len_thread_pool = len(self.thread_pool)
             _len_url_set = len(url_set)
 
             if _len_thread_pool < self.max_thread and _len_url_set > 0:
-                self._parallel_download(url_set, _len_thread_pool, _len_url_set)
+                self._parallel_download(url_set, _len_thread_pool, _len_url_set, user_agent_num)
 
             time.sleep(0.1) 
 
         return self
 
-    def _parallel_download(self, url_set, len_thread_pool, len_url_set):
+    def _parallel_download(self, url_set, len_thread_pool, len_url_set, user_agent_num=0):
         quota = self.max_thread - len_thread_pool
         for i in xrange(min(quota, len_url_set)):
             url = url_set.pop()
-            self.thread_pool[url] = DlerThread(url, self.condition, self.event, self.thread_pool, self.cache, self.header_cache)
+            self.thread_pool[url] = DlerThread(url, self.condition, self.event, self.thread_pool, self.cache, self.header_cache, user_agent_num)
             self.thread_pool[url].start()
         
 
 
 class DlerThread(threading.Thread):
-    def __init__(self, url, condition, event, thread_pool, content_dict, header_dict):
+    def __init__(self, url, condition, event, thread_pool, content_dict, header_dict, user_agent_num):
         threading.Thread.__init__(self)
         self.content_dict = content_dict
         self.header_dict = header_dict
@@ -68,6 +70,7 @@ class DlerThread(threading.Thread):
         self.con = condition
         self.event  = event
         self.thread_pool = thread_pool
+        self.user_agent_num = user_agent_num
 
     def run(self):
         self.download_url()
@@ -79,8 +82,8 @@ class DlerThread(threading.Thread):
         download_chain = [self.url]
         while(len(download_chain) != 0):
             url = download_chain.pop(0)
-            self.content_dict[url], self.header_dict[url], http_code = self._curl(url)
-            print http_code, url, self.header_dict[url]
+            self.content_dict[url], self.header_dict[url], http_code = self._curl(url, self.user_agent_num)
+            #print http_code, url, self.header_dict[url]
             if KEY_CURL_HEADER_LOCATION in self.header_dict[url] and http_code >= 300 and http_code < 400:
                 next_url = self._compose_url_from_location(url, self.header_dict[url][KEY_CURL_HEADER_LOCATION])
                 download_chain.append(next_url)
@@ -93,14 +96,14 @@ class DlerThread(threading.Thread):
         return '%s://%s%s'%(url_tok.scheme, url_tok.netloc, location_url)
         
 
-    def _curl(self, url):
+    def _curl(self, url, user_agent_num=0):
         string_buffer = StringIO()
         header_buffer = list()
         c = pycurl.Curl()
         c.setopt(c.URL, url)
         c.setopt(c.WRITEFUNCTION, string_buffer.write)
         c.setopt(c.FOLLOWLOCATION, False)
-        c.setopt(c.USERAGENT, CURL_OPT_USER_AGENT_LIST[random.randint(0,LEN_USER_AGENT_LIST-1)])
+        c.setopt(c.USERAGENT, CURL_OPT_USER_AGENT_LIST[user_agent_num])
         c.setopt(c.MAXREDIRS, CURL_OPT_MAX_NUM_REDIRECT)
         c.setopt(c.HEADERFUNCTION, header_buffer.append)
         ''' might needs to handle exceptions '''
