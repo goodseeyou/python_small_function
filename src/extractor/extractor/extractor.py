@@ -6,6 +6,7 @@ RE_HREF = re.compile('<\s*[^>]+\s+href=[\'"]([^\'"]*)[\'"]')
 RE_TITLE_TAG = re.compile('<\s*title\s*>([^<>]*)<\s*/\s*title\s*>')
 RE_SHORTCUT_ICON = re.compile('<\s*link\s+[^>]*rel\s*=\s*[\'"]shortcut icon[\'"][^>]*>')
 RE_STYLESHEET = re.compile('<\s*link\s+[^>]*rel\s*=\s*[\'"]stylesheet[\'"][^>]*>')
+RE_INPUT_TAG_PASSWORD_TYPE = re.compile('<\s*input\s+[^>]*type\s*=\s*[\'"]password[\'"][^>]*>')
 
 class ExtractorError(Exception): pass
 
@@ -23,6 +24,8 @@ class Extractor(object):
         return self._get_href_from_tag(RE_SHORTCUT_ICON.findall(self.page))
     def get_stylesheet_list(self):
         return self._get_href_from_tag(RE_STYLESHEET.findall(self.page))
+    def get_password_input_list(self):
+        return RE_INPUT_TAG_PASSWORD_TYPE.findall(self.page)
 
     def _get_href_from_tag(self, tags):
         _set = set()
@@ -41,3 +44,4 @@ if __name__ == '__main__':
     #print extractor.get_title_list()
     #print extractor.get_shortcut_icon_list()
     print extractor.get_stylesheet_list()
+    print extractor.get_password_input_list()
