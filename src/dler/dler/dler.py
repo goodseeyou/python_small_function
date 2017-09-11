@@ -48,6 +48,8 @@ class Dler(object):
 
             time.sleep(0.1) 
 
+        return self
+
     def _parallel_download(self, url_set, len_thread_pool, len_url_set):
         quota = self.max_thread - len_thread_pool
         for i in xrange(min(quota, len_url_set)):
