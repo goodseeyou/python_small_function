@@ -3,7 +3,8 @@ import threading
 import time
 from StringIO import StringIO
 import random
-from urlparse import urlparse
+from urlparse import urljoin
+
 
 CURL_OPT_MAX_NUM_REDIRECT = 12
 CURL_OPT_USER_AGENT_LIST = [ 'Mozilla/5.0 (Windows NT 5.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2224.3 Safari/537.36', # Windows XP Chrome
@@ -16,6 +17,7 @@ LEN_USER_AGENT_LIST = len(CURL_OPT_USER_AGENT_LIST)
 KEY_CURL_HEADER_RESPONSE = '_response'
 KEY_CURL_HEADER_LOCATION = 'location'
 KEY_META_REDIRECT_PATH = 'redirect_url'
+KEY_META_IS_REDIRECT_COMPLETE = 'is_redirect_complete'
 
 ''' TODO
 1. make a singleton
@@ -82,16 +84,27 @@ class DlerThread(threading.Thread):
         self.download_url()
         self.thread_pool.pop(self.url, None)
 
-    def download_url(self):
+    def download_url(self, max_redirect = None):
         download_chain = [self.url]
+        redirected_num = 0
+
         while(len(download_chain) != 0):
             url = download_chain.pop(0)
             self.content_dict[url], self.header_dict[url], http_code = self._curl(url, self.user_agent_num)
-            #print http_code, url, self.header_dict[url]
+
             if KEY_CURL_HEADER_LOCATION in self.header_dict[url] and http_code >= 300 and http_code < 400:
-                next_url = self._compose_url_from_location(url, self.header_dict[url][KEY_CURL_HEADER_LOCATION])
+                next_url = urljoin(url, self.header_dict[url][KEY_CURL_HEADER_LOCATION])
+                if not next_url or url == next_url: continue
+
                 download_chain.append(next_url)
                 self.url_chain.append(next_url)
+                redirected_num += 1
+
+                if max_redirect is not None and redirect_num >= max_redirect:
+                    self.meta_dict[KEY_META_IS_REDIRECT_COMPLETE] = False
+                    break
+
+        self.meta_dict[KEY_META_IS_REDIRECT_COMPLETE] = self.meta_dict.get(KEY_META_IS_REDIRECT_COMPLETE, True)
         self.meta_dict[KEY_META_REDIRECT_PATH] = self.url_chain
 
     def _compose_url_from_location(self, url, location_url):
