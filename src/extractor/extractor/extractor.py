@@ -10,6 +10,7 @@ RE_TITLE_TAG = re.compile('<\s*title\s*>([^<>]*)<\s*/\s*title\s*>')
 RE_SHORTCUT_ICON = re.compile('<\s*link\s+[^>]*rel\s*=\s*[\'"]shortcut icon[\'"][^>]*>')
 RE_STYLESHEET = re.compile('<\s*link\s+[^>]*rel\s*=\s*[\'"]stylesheet[\'"][^>]*>')
 RE_INPUT_TAG_PASSWORD_TYPE = re.compile('<\s*input\s+[^>]*type\s*=\s*[\'"]password[\'"][^>]*>')
+RE_LIMITED_VISIBLE_TEXT = re.compile('<\s*(p|h[0-9]|div|span|td|a)\s*[^>]*>([^<>]+)<\s*/(p|h[0-9]|div|span|td|a)>')
 
 DEFAULT_SHORTCUT_ICON = 'favicon.ico'
 
@@ -32,6 +33,8 @@ class Extractor(object):
         return self._get_href_from_tag(RE_STYLESHEET.findall(self.page))
     def get_password_input_list(self):
         return RE_INPUT_TAG_PASSWORD_TYPE.findall(self.page)
+    def get_limited_visible_text_list(self):
+        return [tok[1].strip() for tok in RE_LIMITED_VISIBLE_TEXT.findall(self.page) if tok[1].strip()]
 
     def _get_href_from_tag(self, tags):
         _set = set()
@@ -45,11 +48,11 @@ class Extractor(object):
 def is_same_icon(url, target_url, url_extractor, target_extractor):
     if does_has_scheme(url) ^ does_has_scheme(target_url): raise ExtractorAnalyzeError('URL and target URL should have the same format.')
 
-    url_icon_set = set([urljoin(url, icon_url) for icon_url.strip() in url_extractor.get_shortcut_icon_list() if icon_url.strip()])
+    url_icon_set = set([urljoin(url, icon_url.strip()) for icon_url in url_extractor.get_shortcut_icon_list() if icon_url.strip()])
     if not url_icon_set: url_icon_set.add(urljoin(get_domain_url(url), DEFAULT_SHORTCUT_ICON))
     len_url_icon_set = len(url_icon_set)
 
-    target_icon_set = set([urljoin(target_url, icon_url) for icon_url.strip() in target_extractor.get_shortcut_icon_list() if icon_url.strip()])
+    target_icon_set = set([urljoin(target_url, icon_url.strip()) for icon_url in target_extractor.get_shortcut_icon_list() if icon_url.strip()])
     if not target_icon_set: target_icon_set.add(urljoin(get_domain_url(target_url), DEFAULT_SHORTCUT_ICON))
     len_target_icon_set = len(target_icon_set)
 
@@ -107,5 +110,6 @@ if __name__ == '__main__':
     #print extractor.get_href_list()
     #print extractor.get_title_list()
     #print extractor.get_shortcut_icon_list()
-    print extractor.get_stylesheet_list()
-    print extractor.get_password_input_list()
+    #print extractor.get_stylesheet_list()
+    #print extractor.get_password_input_list()
+    print extractor.get_limited_visible_text_list()
