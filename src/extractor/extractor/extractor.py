@@ -10,7 +10,7 @@ RE_TITLE_TAG = re.compile('<\s*title\s*>([^<>]*)<\s*/\s*title\s*>')
 RE_SHORTCUT_ICON = re.compile('<\s*link\s+[^>]*rel\s*=\s*[\'"]shortcut icon[\'"][^>]*>')
 RE_STYLESHEET = re.compile('<\s*link\s+[^>]*rel\s*=\s*[\'"]stylesheet[\'"][^>]*>')
 RE_INPUT_TAG_PASSWORD_TYPE = re.compile('<\s*input\s+[^>]*type\s*=\s*[\'"]password[\'"][^>]*>')
-RE_LIMITED_VISIBLE_TEXT = re.compile('<\s*(p|h[0-9]|div|span|td|a)\s*[^>]*>([^<>]+)<\s*/(p|h[0-9]|div|span|td|a)>')
+RE_LIMITED_VISIBLE_TEXT = re.compile('<\s*(label|p|h[0-9]|div|span|td|a|br)\s*[^>]*>([^<>]+)')
 
 DEFAULT_SHORTCUT_ICON = 'favicon.ico'
 
