@@ -18,6 +18,9 @@ KEY_CURL_HEADER_RESPONSE = '_response'
 KEY_CURL_HEADER_LOCATION = 'location'
 KEY_META_REDIRECT_PATH = 'redirect_url'
 KEY_META_IS_REDIRECT_COMPLETE = 'is_redirect_complete'
+KEY_META_SUCCESSFULLY_DOWNLOAD = 'successfully_download'
+KEY_META_FAILED_DOWNLOAD_REASON = 'failed_download_reason'
+
 
 ''' TODO
 1. make a singleton
@@ -125,9 +128,15 @@ class DlerThread(threading.Thread):
         c.setopt(c.MAXREDIRS, CURL_OPT_MAX_NUM_REDIRECT)
         c.setopt(c.HEADERFUNCTION, header_buffer.append)
         c.setopt(c.SSL_VERIFYPEER, 0)
-        ''' might needs to handle exceptions '''
-        c.perform()
+        try:
+            c.perform()
+        except Exception as e:
+            self.meta_dict[KEY_META_SUCCESSFULLY_DOWNLOAD] = False
+            self.meta_dict[KEY_META_FAILED_DOWNLOAD_REASON] = '%s:%s' % (e.__class__.__name__, str(e))
+            return
+
         http_code = int(c.getinfo(c.HTTP_CODE))
+        self.meta_dict[KEY_META_SUCCESSFULLY_DOWNLOAD] = True
 
         c.close()
 
