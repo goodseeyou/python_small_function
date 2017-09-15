@@ -78,7 +78,7 @@ def get_similarity_by_stylesheet(url, target_url, url_extractor, target_extracto
 
     # Both url have no stylesheet link. It's a common feature, so define the ratio as 1
     common_ratio_of_min = 1 if len_url_style_set == 0 and len_target_style_set == 0 \
-                            else common_count / float(min(len_url_style_set, len_target_style_set))
+                            else common_count / float(max(1, min(len_url_style_set, len_target_style_set)))
 
     return common_ratio_of_min, common_count, len_url_style_set, len_target_style_set
 
