@@ -19,7 +19,7 @@ class ExtractorError(Exception): pass
 class ExtractorAnalyzeError(Exception): pass
 class Extractor(object):
     def __init__(self, page):
-        self.page = page.replace('\n', '')
+        self.page = page.replace('\n', '').lower()
 
     def get_a_href_list(self):
         return RE_A_TAG_HREF.findall(self.page)
