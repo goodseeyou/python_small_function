@@ -124,6 +124,7 @@ class DlerThread(threading.Thread):
         c.setopt(c.USERAGENT, CURL_OPT_USER_AGENT_LIST[user_agent_num])
         c.setopt(c.MAXREDIRS, CURL_OPT_MAX_NUM_REDIRECT)
         c.setopt(c.HEADERFUNCTION, header_buffer.append)
+        c.setopt(c.SSL_VERIFYPEER, 0)
         ''' might needs to handle exceptions '''
         c.perform()
         http_code = int(c.getinfo(c.HTTP_CODE))
