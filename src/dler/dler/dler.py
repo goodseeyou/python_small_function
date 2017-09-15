@@ -20,6 +20,7 @@ KEY_META_REDIRECT_PATH = 'redirect_url'
 KEY_META_IS_REDIRECT_COMPLETE = 'is_redirect_complete'
 KEY_META_SUCCESSFULLY_DOWNLOAD = 'successfully_download'
 KEY_META_FAILED_DOWNLOAD_REASON = 'failed_download_reason'
+KEY_META_HTTP_CODE = 'http_code'
 
 
 ''' TODO
@@ -141,6 +142,7 @@ class DlerThread(threading.Thread):
             raise DlerThreadError(e)
 
         http_code = int(c.getinfo(c.HTTP_CODE))
+        self.meta_dict[KEY_META_HTTP_CODE] = http_code
         self.meta_dict[KEY_META_SUCCESSFULLY_DOWNLOAD] = True
 
         c.close()
