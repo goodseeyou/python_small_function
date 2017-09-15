@@ -66,10 +66,14 @@ class Dler(object):
             self.cache[url] = {}
             self.header_cache[url] = {}
             self.meta_cache[url] = {}
-            self.thread_pool[url] = DlerThread(url, self.condition, self.event, self.thread_pool, self.cache[url], self.header_cache[url], self.meta_cache[url], user_agent_num)
-            self.thread_pool[url].start()
+            try:
+                self.thread_pool[url] = DlerThread(url, self.condition, self.event, self.thread_pool, self.cache[url], self.header_cache[url], self.meta_cache[url], user_agent_num)
+                self.thread_pool[url].start()
+            except DlerThreadError as e:
+                self.meta_cache[url][KEY_META_SUCCESSFULLY_DOWNLOAD] = False
+                continue
 
-
+class DlerThreadError(Exception): pass
 class DlerThread(threading.Thread):
     def __init__(self, url, condition, event, thread_pool, content_dict, header_dict, meta_dict, user_agent_num):
         threading.Thread.__init__(self)
@@ -133,7 +137,7 @@ class DlerThread(threading.Thread):
         except Exception as e:
             self.meta_dict[KEY_META_SUCCESSFULLY_DOWNLOAD] = False
             self.meta_dict[KEY_META_FAILED_DOWNLOAD_REASON] = '%s:%s' % (e.__class__.__name__, str(e))
-            return
+            raise DlerThreadError(e)
 
         http_code = int(c.getinfo(c.HTTP_CODE))
         self.meta_dict[KEY_META_SUCCESSFULLY_DOWNLOAD] = True
