@@ -96,6 +96,11 @@ def get_domain_url(url):
     return '%s://%s/' % (tok.scheme, tok.netloc)
 
 
+def get_path(url):
+    tok = urlparse(url)
+    return tok.path.split('?')[0]
+
+
 def does_has_scheme(url):
     tok = urlparse(url)
     return str(tok.scheme).strip() != ''

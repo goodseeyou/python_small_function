@@ -71,6 +71,7 @@ class Dler(object):
                 self.thread_pool[url].start()
             except DlerThreadError as e:
                 self.meta_cache[url][KEY_META_SUCCESSFULLY_DOWNLOAD] = False
+                self.meta_cache[url][KEY_META_FAILED_DOWNLOAD_REASON] = '%s:%s' % (e.__class__.__name__, str(e))
                 continue
 
 class DlerThreadError(Exception): pass
