@@ -24,7 +24,7 @@ KEY_META_FAILED_DOWNLOAD_REASON = 'failed_download_reason'
 KEY_META_HTTP_CODE = 'http_code'
 
 RE_HEAD = re.compile('<\s*head\s+[^>]*>(.*)</head>')
-RE_JAVASCRIPT = re.compile('<\s*script\s*>(.*)?<\s*script\s*>')
+RE_JAVASCRIPT = re.compile('<\s*script\s*>(.*?)</\s*script\s*>')
 RE_META_REDIRECT = re.compile('<\s*meta\s+[^>]*http-equiv\s*=\s*[\'"]refresh[\'"]\s*[^>]*content\s*=\s*[\'"][^\'"]*;\s*url\s*=\s*([^\'"]*)[\'"]')
 RE_WINDOW_LOCATION_REDIRECT = re.compile('window.location=[\'"]([^\'"]+)[\'"]')
 RE_DOCUMENT_LOCATION_HREF_REDIRECT = re.compile('document.location.href=[\'"](^\'"]+)[\'"]')
