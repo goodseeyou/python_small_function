@@ -42,7 +42,8 @@ class Dler(object):
         self.header_cache = {} if header_cache is None else header_cache
         self.meta_cache = {} if meta_cache is None else meta_cache
     
-    def download(self, url_iterable, does_content_redirect=False):
+    def download(self, url_iterable, does_content_redirect=False, timeout_seconds=30):
+        begin_time = time.time()
         try:
             url_iterator = iter(url_iterable)
         except TypeError as e:
@@ -52,6 +53,10 @@ class Dler(object):
         user_agent_num = random.randint(0, LEN_USER_AGENT_LIST-1)
 
         while len(self.thread_pool) != 0 or len(url_set) != 0 :
+            round_time = time.time()
+            if abs(round_time - begin_time) > int(timeout_seconds) :
+                raise DlerError('Get timeout when downloading')
+
             _len_thread_pool = len(self.thread_pool)
             _len_url_set = len(url_set)
 
