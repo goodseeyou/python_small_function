@@ -63,6 +63,7 @@ class Dler(object):
             if _len_thread_pool < self.max_thread and _len_url_set > 0:
                 self._parallel_download(url_set, _len_thread_pool, _len_url_set, user_agent_num, does_content_redirect)
 
+            ''' TODO check if this sleep is better to keep '''
             time.sleep(0.1) 
 
         return self
