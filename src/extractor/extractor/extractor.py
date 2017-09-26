@@ -10,6 +10,7 @@ RE_TITLE_TAG = re.compile('<\s*title\s*>([^<>]*)<\s*/\s*title\s*>')
 RE_SHORTCUT_ICON = re.compile('<\s*link\s+[^>]*rel\s*=\s*[\'"]shortcut icon[\'"][^>]*>')
 RE_STYLESHEET = re.compile('<\s*link\s+[^>]*rel\s*=\s*[\'"]stylesheet[\'"][^>]*>')
 RE_INPUT_TAG_PASSWORD_TYPE = re.compile('<\s*input\s+[^>]*type\s*=\s*[\'"]password[\'"][^>]*>')
+RE_INPUT_TAG_TEXT_TYPE = re.compile('<\s*input\s+[^>]*type\s*=\s*[\'"]text[\'"][^>]*>')
 RE_LIMITED_VISIBLE_TEXT = re.compile('<\s*(label|p|h[0-9]|div|span|td|a|br)\s*[^>]*>([^<>]+)')
 
 DEFAULT_SHORTCUT_ICON = 'favicon.ico'
@@ -33,6 +34,8 @@ class Extractor(object):
         return self._get_href_from_tag(RE_STYLESHEET.findall(self.page))
     def get_password_input_list(self):
         return RE_INPUT_TAG_PASSWORD_TYPE.findall(self.page)
+    def get_text_input_list(self):
+        return RE_INPUT_TAG_TEXT_TYPE.findall(self.page)
     def get_limited_visible_text_list(self):
         return [tok[1].strip() for tok in RE_LIMITED_VISIBLE_TEXT.findall(self.page) if tok[1].strip()]
 
