@@ -30,7 +30,11 @@ RE_WINDOW_LOCATION_REDIRECT = re.compile('window.location=[\'"]([^\'"]+)[\'"]')
 RE_DOCUMENT_LOCATION_HREF_REDIRECT = re.compile('document.location.href=[\'"](^\'"]+)[\'"]')
 RE_FORM_SUBMIT_REDIRECT = re.compile('document.forms\[[0-9]+\].submit()')
 
-
+''' Cache structure
+cache (content cache): cache[input_url][each_redirect_url] = str(page content)
+header_cache: header_cache[input_url][each_redirect_url] = dict(response header)
+meta_cache: meta_cache[input_url] = dict(meta data)
+'''
 class DlerError(Exception): pass
 class Dler(object):
     def __init__(self, max_thread = 5, cache = None, header_cache = None, meta_cache = None):
@@ -81,6 +85,7 @@ class Dler(object):
             except DlerThreadError as e:
                 self.meta_cache[url][KEY_META_SUCCESSFULLY_DOWNLOAD] = False
                 self.meta_cache[url][KEY_META_FAILED_DOWNLOAD_REASON] = '%s:%s' % (e.__class__.__name__, str(e))
+                self.thread_pool.pop(url, None)
                 continue
 
 
