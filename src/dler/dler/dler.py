@@ -30,7 +30,11 @@ RE_WINDOW_LOCATION_REDIRECT = re.compile('window.location=[\'"]([^\'"]+)[\'"]')
 RE_DOCUMENT_LOCATION_HREF_REDIRECT = re.compile('document.location.href=[\'"](^\'"]+)[\'"]')
 RE_FORM_SUBMIT_REDIRECT = re.compile('document.forms\[[0-9]+\].submit()')
 
-
+''' Cache structure
+cache (content cache): cache[input_url][each_redirect_url] = str(page content)
+header_cache: header_cache[input_url][each_redirect_url] = dict(response header)
+meta_cache: meta_cache[input_url] = dict(meta data)
+'''
 class DlerError(Exception): pass
 class Dler(object):
     def __init__(self, max_thread = 5, cache = None, header_cache = None, meta_cache = None):
@@ -75,13 +79,8 @@ class Dler(object):
             self.cache[url] = {}
             self.header_cache[url] = {}
             self.meta_cache[url] = {}
-            try:
-                self.thread_pool[url] = DlerThread(url, self.condition, self.event, self.thread_pool, self.cache[url], self.header_cache[url], self.meta_cache[url], user_agent_num, does_content_redirect)
-                self.thread_pool[url].start()
-            except DlerThreadError as e:
-                self.meta_cache[url][KEY_META_SUCCESSFULLY_DOWNLOAD] = False
-                self.meta_cache[url][KEY_META_FAILED_DOWNLOAD_REASON] = '%s:%s' % (e.__class__.__name__, str(e))
-                continue
+            self.thread_pool[url] = DlerThread(url, self.condition, self.event, self.thread_pool, self.cache[url], self.header_cache[url], self.meta_cache[url], user_agent_num, does_content_redirect)
+            self.thread_pool[url].start()
 
 
 class DlerThreadError(Exception): pass
@@ -103,8 +102,13 @@ class DlerThread(threading.Thread):
         self.custom_header = ['Accept-Language:zh-tw,zh-cn,zh-hk,zh-mo,en-us,en-gb,en-ca,fr-fr,de-de,it-it,ja-jp,ru-ru,es-es,pt-br,es-mx,bn-in,da-dk']
 
     def run(self):
-        self.download_url()
-        self.thread_pool.pop(self.url, None)
+        try:
+            self.download_url()
+            self.thread_pool.pop(self.url, None)
+        except Exception as e:
+            self.meta_dict[KEY_META_SUCCESSFULLY_DOWNLOAD] = False
+            self.meta_dict[KEY_META_FAILED_DOWNLOAD_REASON] = '%s:%s' % (e.__class__.__name__, str(e))
+            self.thread_pool.pop(self.url, None)
 
     def download_url(self):
         download_chain = [self.url]
