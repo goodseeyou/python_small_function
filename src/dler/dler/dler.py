@@ -23,9 +23,11 @@ KEY_META_SUCCESSFULLY_DOWNLOAD = 'successfully_download'
 KEY_META_FAILED_DOWNLOAD_REASON = 'failed_download_reason'
 KEY_META_HTTP_CODE = 'http_code'
 
-RE_HEAD = re.compile('<\s*head\s+[^>]*>(.*)</head>')
 RE_JAVASCRIPT = re.compile('<\s*script\s*>(.*?)</\s*script\s*>')
-RE_META_REDIRECT = re.compile('<\s*meta\s+[^>]*http-equiv\s*=\s*[\'"]refresh[\'"]\s*[^>]*content\s*=\s*[\'"][^\'"]*;\s*url\s*=\s*([^\'"]*)[\'"]')
+RE_META_TAG = re.compile('<\s*meta\s+([^>]+?)/\s*>')
+RE_BEFORE_BODY = re.compile('(.*?)<\s*body')
+RE_REFRESH_IN_META = re.compile('http-equiv\s*=\s*[\'"]?refresh[\'"]?')
+RE_CONTENT_URL_IN_META = re.compile('content\s*=\s*[\'"]?[0-9]*\s*;\s*url\s*=\s*[\'"]?([^\'">]+)')
 RE_WINDOW_LOCATION_REDIRECT = re.compile('window.location=[\'"]([^\'"]+)[\'"]')
 RE_DOCUMENT_LOCATION_HREF_REDIRECT = re.compile('document.location.href=[\'"](^\'"]+)[\'"]')
 RE_FORM_SUBMIT_REDIRECT = re.compile('document.forms\[[0-9]+\].submit()')
@@ -206,9 +208,16 @@ class DlerThread(threading.Thread):
 def find_redirect(lower_page):
     redirect_url = set()
 
-    heads = RE_HEAD.findall(lower_page)
-    for item in heads:
-        for url in RE_META_REDIRECT.findall(item): redirect_url.add(url)
+    # TODO improve meta redirect function
+    before_body = RE_BEFORE_BODY.search(lower_page)
+    page = before_body.group(0) if before_body else lower_page
+    metas = RE_META_TAG.findall(page)
+    for meta in metas:
+        refresh_meta = RE_REFRESH_IN_META.search(meta)
+        if not refresh_meta: continue
+        urls = RE_CONTENT_URL_IN_META.findall(meta)
+        if urls:
+            redirect_url.add(urls[0])
 
     scripts = RE_JAVASCRIPT.findall(lower_page)
     for item in scripts:
