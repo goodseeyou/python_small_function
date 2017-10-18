@@ -25,7 +25,7 @@ KEY_META_HTTP_CODE = 'http_code'
 
 RE_JAVASCRIPT = re.compile('<\s*script\s*>(.*?)</\s*script\s*>')
 RE_META_TAG = re.compile('<\s*meta\s+([^>]+?)/\s*>')
-RE_BEFORE_BODY = re.compile('(.*?)<\s*body')
+RE_BEFORE_BODY = re.compile('^(.*?)<\s*body')
 RE_REFRESH_IN_META = re.compile('http-equiv\s*=\s*[\'"]?refresh[\'"]?')
 RE_CONTENT_URL_IN_META = re.compile('content\s*=\s*[\'"]?[0-9]*\s*;\s*url\s*=\s*[\'"]?([^\'">]+)')
 RE_WINDOW_LOCATION_REDIRECT = re.compile('window.location=[\'"]([^\'"]+)[\'"]')
@@ -209,8 +209,8 @@ def find_redirect(lower_page):
     redirect_url = set()
 
     # TODO improve meta redirect function
-    before_body = RE_BEFORE_BODY.search(lower_page)
-    page = before_body.group(0) if before_body else lower_page
+    before_body = RE_BEFORE_BODY.findall(lower_page)
+    page = ' '.join(before_body) if before_body else lower_page
     metas = RE_META_TAG.findall(page)
     for meta in metas:
         refresh_meta = RE_REFRESH_IN_META.search(meta)
