@@ -6,9 +6,11 @@ from urlparse import urlparse
 
 RE_A_TAG_HREF = re.compile('<\s*a\s+[^>]*\s+href=[\'"]([^\'"]*)[\'"]')
 RE_HREF = re.compile('<\s*[^>]+\s+href=[\'"]([^\'"]*)[\'"]')
+RE_SRC = re.compile('<\s*[^>]+\s+src=[\'"]([^\'"]*)[\'"]')
 RE_TITLE_TAG = re.compile('<\s*title\s*>([^<>]*)<\s*/\s*title\s*>')
-RE_SHORTCUT_ICON = re.compile('<\s*link\s+[^>]*rel\s*=\s*[\'"]shortcut icon[\'"][^>]*>')
-RE_STYLESHEET = re.compile('<\s*link\s+[^>]*rel\s*=\s*[\'"]stylesheet[\'"][^>]*>')
+RE_SHORTCUT_ICON = re.compile('<\s*link\s+[^>]*rel\s*=\s*[\'"]shortcut icon[\'"][^>]*?>')
+RE_STYLESHEET = re.compile('<\s*link\s+[^>]*rel\s*=\s*[\'"]stylesheet[\'"][^>]*?>')
+RE_SCRIPT = re.compile('<\s*script\s+[^>]*type\s*=\s*[\'"]text/javascript[\'"][^>]*?>\s*</script>')
 RE_INPUT_TAG_PASSWORD_TYPE = re.compile('<\s*input\s+[^>]*type\s*=\s*[\'"]password[\'"][^>]*>')
 RE_INPUT_TAG_TEXT_TYPE = re.compile('<\s*input\s+[^>]*type\s*=\s*[\'"]text[\'"][^>]*>')
 RE_LIMITED_VISIBLE_TEXT = re.compile('<\s*(label|p|h[0-9]|div|span|td|a|br)\s*[^>]*>([^<>]+)')
@@ -32,6 +34,8 @@ class Extractor(object):
         return self._get_href_from_tag(RE_SHORTCUT_ICON.findall(self.page))
     def get_stylesheet_list(self):
         return self._get_href_from_tag(RE_STYLESHEET.findall(self.page))
+    def get_script_src_list(self):
+        return self._get_src_from_tag(RE_SCRIPT.findall(sef.page))
     def get_password_input_list(self):
         return RE_INPUT_TAG_PASSWORD_TYPE.findall(self.page)
     def get_text_input_list(self):
@@ -40,10 +44,14 @@ class Extractor(object):
         return [tok[1].strip() for tok in RE_LIMITED_VISIBLE_TEXT.findall(self.page) if tok[1].strip()]
 
     def _get_href_from_tag(self, tags):
+        return self._get_re_result_from_tag(RE_HREF, tags)
+    def _get_src_from_tag(self, tags):
+        return self._get_re_result_from_tag(RE_SRC, tags)
+    def _get_re_result_from_tag(self, compiled_re, tags):
         _set = set()
         for tag in tags:
-           for href in RE_HREF.findall(tag):
-                if href.strip(): _set.add(href)
+           for r in compiled_re.findall(tag):
+                if r.strip(): _set.add(r)
         return list(_set) 
 
 
