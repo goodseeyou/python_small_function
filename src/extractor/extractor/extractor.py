@@ -32,10 +32,10 @@ class Extractor(object):
         return RE_TITLE_TAG.findall(self.page)
     def get_shortcut_icon_list(self):
         return self._get_href_from_tag(RE_SHORTCUT_ICON.findall(self.page))
-    def get_stylesheet_list(self):
+    def get_stylesheet_href_list(self):
         return self._get_href_from_tag(RE_STYLESHEET.findall(self.page))
     def get_script_src_list(self):
-        return self._get_src_from_tag(RE_SCRIPT.findall(sef.page))
+        return self._get_src_from_tag(RE_SCRIPT.findall(self.page))
     def get_password_input_list(self):
         return RE_INPUT_TAG_PASSWORD_TYPE.findall(self.page)
     def get_text_input_list(self):
@@ -77,21 +77,27 @@ def is_same_icon(url, target_url, url_extractor, target_extractor):
 
 
 def get_similarity_by_stylesheet(url, target_url, url_extractor, target_extractor):
+    return _get_similarity_by_extract_function(url, target_url, url_extractor.get_stylesheet_href_list, target_extractor.get_stylesheet_href_list)
+
+def get_similarity_by_script(url, target_url, url_extractor, target_extractor):
+    return _get_similarity_by_extract_function(url, target_url, url_extractor.get_script_src_list, target_extractor.get_script_src_list)
+
+def _get_similarity_by_extract_function(url, target_url, url_extract_function, target_extract_function):
     if does_has_scheme(url) ^ does_has_scheme(target_url): raise ExtractorAnalyzeError('URL and target URL should have the same format.')
 
-    url_style_set = set([urljoin(url, stylesheet_url) for stylesheet_url in url_extractor.get_stylesheet_list()])
-    len_url_style_set = len(url_style_set)
+    url_extract_set = set([urljoin(url, extract_url) for extract_url in url_extract_function()])
+    len_url_extract_set = len(url_extract_set)
 
-    target_style_set = set([urljoin(target_url, stylesheet_url) for stylesheet_url in target_extractor.get_stylesheet_list()])
-    len_target_style_set = len(target_style_set)
+    target_extract_set = set([urljoin(target_url, extract_url) for extract_url in target_extract_function()])
+    len_target_extract_set = len(target_extract_set)
     
-    common_count = _common_item_count(url_style_set, target_style_set)
+    common_count = _common_item_count(url_extract_set, target_extract_set)
 
-    # Both url have no stylesheet link. It's a common feature, so define the ratio as 1
-    common_ratio_of_min = 1 if len_url_style_set == 0 and len_target_style_set == 0 \
-                            else common_count / float(max(1, min(len_url_style_set, len_target_style_set)))
+    # Both url have no extractsheet link. It's a common feature, so define the ratio as 1
+    common_ratio_of_min = 1 if len_url_extract_set == 0 and len_target_extract_set == 0 \
+                            else common_count / float(max(1, min(len_url_extract_set, len_target_extract_set)))
 
-    return common_ratio_of_min, common_count, len_url_style_set, len_target_style_set
+    return common_ratio_of_min, common_count, len_url_extract_set, len_target_extract_set
 
 
 def _common_item_count(iter_a, iter_b):
@@ -126,6 +132,7 @@ if __name__ == '__main__':
     #print extractor.get_href_list()
     #print extractor.get_title_list()
     #print extractor.get_shortcut_icon_list()
-    #print extractor.get_stylesheet_list()
+    print extractor.get_stylesheet_href_list()
+    print extractor.get_script_src_list()
     #print extractor.get_password_input_list()
-    print extractor.get_limited_visible_text_list()
+    #print extractor.get_limited_visible_text_list()
