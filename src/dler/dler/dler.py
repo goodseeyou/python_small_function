@@ -17,11 +17,11 @@ CURL_OPT_USER_AGENT_LIST = [ 'Mozilla/5.0 (Windows NT 5.1) AppleWebKit/537.36 (K
 LEN_USER_AGENT_LIST = len(CURL_OPT_USER_AGENT_LIST)
 KEY_CURL_HEADER_RESPONSE = '_response'
 KEY_CURL_HEADER_LOCATION = 'location'
-KEY_CURL_HEADER_CONTENT_LENGTH = 'content-length'
 KEY_META_REDIRECT_PATH = 'redirect_url'
 KEY_META_IS_REDIRECT_COMPLETE = 'is_redirect_complete'
 KEY_META_SUCCESSFULLY_DOWNLOAD = 'successfully_download'
 KEY_META_FAILED_DOWNLOAD_REASON = 'failed_download_reason'
+KEY_META_CONTENT_LENGTH = 'final_url_content_length'
 KEY_META_HTTP_CODE = 'http_code'
 
 RE_JAVASCRIPT = re.compile('<\s*script\s*>(.*?)</\s*script\s*>')
@@ -154,6 +154,7 @@ class DlerThread(threading.Thread):
 
         self.meta_dict[KEY_META_IS_REDIRECT_COMPLETE] = self.meta_dict.get(KEY_META_IS_REDIRECT_COMPLETE, True)
         self.meta_dict[KEY_META_REDIRECT_PATH] = self.url_chain
+        self.meta_dict[KEY_META_CONTENT_LENGTH] = len(self.content_dict[self.url_chain[-1]]) if self.url_chain[-1] in self.content_dict else -1
 
     def _compose_url_from_location(self, url, location_url):
         if location_url.startswith('http'):
