@@ -85,10 +85,11 @@ def get_similarity_by_script(url, target_url, url_extractor, target_extractor):
 def _get_similarity_by_extract_function(url, target_url, url_extract_function, target_extract_function):
     if does_has_scheme(url) ^ does_has_scheme(target_url): raise ExtractorAnalyzeError('URL and target URL should have the same format.')
 
-    url_extract_set = set([urljoin(url, extract_url) for extract_url in url_extract_function()])
+    # use filename to decrease FP [case] "http://012.tw/houvyWZ"
+    url_extract_set = set([extract_url.split('/')[-1].split('?')[0] for extract_url in url_extract_function()])
     len_url_extract_set = len(url_extract_set)
 
-    target_extract_set = set([urljoin(target_url, extract_url) for extract_url in target_extract_function()])
+    target_extract_set = set([urljoin(extract_url.split('/')[-1].split('?')[0] for extract_url in target_extract_function()])
     len_target_extract_set = len(target_extract_set)
     
     common_count = _common_item_count(url_extract_set, target_extract_set)
