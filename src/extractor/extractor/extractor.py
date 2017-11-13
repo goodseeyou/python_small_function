@@ -89,7 +89,7 @@ def _get_similarity_by_extract_function(url, target_url, url_extract_function, t
     url_extract_set = set([extract_url.split('/')[-1].split('?')[0] for extract_url in url_extract_function()])
     len_url_extract_set = len(url_extract_set)
 
-    target_extract_set = set([urljoin(extract_url.split('/')[-1].split('?')[0] for extract_url in target_extract_function()])
+    target_extract_set = set([extract_url.split('/')[-1].split('?')[0] for extract_url in target_extract_function()])
     len_target_extract_set = len(target_extract_set)
     
     common_count = _common_item_count(url_extract_set, target_extract_set)
