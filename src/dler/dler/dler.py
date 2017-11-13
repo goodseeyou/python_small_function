@@ -17,6 +17,7 @@ CURL_OPT_USER_AGENT_LIST = [ 'Mozilla/5.0 (Windows NT 5.1) AppleWebKit/537.36 (K
 LEN_USER_AGENT_LIST = len(CURL_OPT_USER_AGENT_LIST)
 KEY_CURL_HEADER_RESPONSE = '_response'
 KEY_CURL_HEADER_LOCATION = 'location'
+KEY_CURL_HEADER_CONTENT_LENGTH = 'content-length'
 KEY_META_REDIRECT_PATH = 'redirect_url'
 KEY_META_IS_REDIRECT_COMPLETE = 'is_redirect_complete'
 KEY_META_SUCCESSFULLY_DOWNLOAD = 'successfully_download'
