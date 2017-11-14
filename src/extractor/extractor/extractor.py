@@ -16,6 +16,8 @@ RE_INPUT_TAG_TEXT_TYPE = re.compile('<\s*input\s+[^>]*type\s*=\s*[\'"]text[\'"][
 RE_LIMITED_VISIBLE_TEXT = re.compile('<\s*(label|p|h[0-9]|div|span|td|a|br)\s*[^>]*>([^<>]+)')
 RE_ENG_NUM_TEXT = re.compile('[0-9a-zA-Z]+')
 
+STOP_WORD = ('div', 'span', 'input', 'form', 'link', 'script', 'meta', 'style', 'img', 'h1', 'h2', 'h3', 'p', 'br', 'class', 'id', 'tr', 'td', 'label', 'a')
+
 DEFAULT_SHORTCUT_ICON = 'favicon.ico'
 
 
@@ -43,8 +45,13 @@ class Extractor(object):
         return RE_INPUT_TAG_TEXT_TYPE.findall(self.page)
     def get_limited_visible_text_list(self):
         return [tok[1].strip() for tok in RE_LIMITED_VISIBLE_TEXT.findall(self.page) if tok[1].strip()]
-    def get_lower_eng_num_text_list(self):
-        return [tok.lower().strip() for tok in RE_ENG_NUM_TEXT.findall(self.page)]
+    def get_title_text_list(self):
+        return self.get_lower_eng_num_text_list(text = ' '.join(self.get_title_list()))
+    def get_lower_eng_num_text_list(self, text=None):
+        if text is None:
+            return [tok.lower().strip() for tok in RE_ENG_NUM_TEXT.findall(self.page) if tok not in STOP_WORD]
+        else:
+            return [tok.lower().strip() for tok in RE_ENG_NUM_TEXT.findall(text)]
 
     def _get_href_from_tag(self, tags):
         return self._get_re_result_from_tag(RE_HREF, tags)
@@ -58,15 +65,35 @@ class Extractor(object):
         return list(_set) 
 
 
+def _reduced_normalize_url(url):
+    tok = urlparse(url)
+
+    netloc_tok = tok.netloc.split(":")
+    if netloc_tok[-1].isdigit():
+        port = netloc_tok[-1]
+        domain = ':'.join(netloc_tok[:-1])
+    else:
+        port = ''
+        domain = ':'.join(netloc_tok)
+    domain = domain.strip('[]')
+
+    path = tok.path
+    query = tok.query
+
+    return '%s%s?%s' % (domain, path, query)
+    
+
 # Recognize only by URL
 def is_same_icon(url, target_url, url_extractor, target_extractor):
     if does_has_scheme(url) ^ does_has_scheme(target_url): raise ExtractorAnalyzeError('URL and target URL should have the same format.')
 
-    url_icon_set = set([urljoin(url, icon_url.strip()) for icon_url in url_extractor.get_shortcut_icon_list() if icon_url.strip()])
+    url_icon_set = set([_reduced_normalize_url(urljoin(url, icon_url.strip())) \
+        for icon_url in url_extractor.get_shortcut_icon_list() if icon_url.strip()])
     if not url_icon_set: url_icon_set.add(urljoin(get_domain_url(url), DEFAULT_SHORTCUT_ICON))
     len_url_icon_set = len(url_icon_set)
 
-    target_icon_set = set([urljoin(target_url, icon_url.strip()) for icon_url in target_extractor.get_shortcut_icon_list() if icon_url.strip()])
+    target_icon_set = set([_reduced_normalize_url(urljoin(target_url, icon_url.strip())) \
+        for icon_url in target_extractor.get_shortcut_icon_list() if icon_url.strip()])
     if not target_icon_set: target_icon_set.add(urljoin(get_domain_url(target_url), DEFAULT_SHORTCUT_ICON))
     len_target_icon_set = len(target_icon_set)
 
@@ -85,8 +112,8 @@ def get_similarity_by_stylesheet(url, target_url, url_extractor, target_extracto
 def get_similarity_by_script(url, target_url, url_extractor, target_extractor):
     return _get_similarity_by_extract_function(url, target_url, url_extractor.get_script_src_list, target_extractor.get_script_src_list)
 
-def get_similarity_by_text(url, target_url, url_extractor, target_extractor):
-    return _get_similarity_by_extract_function(url, target_url, url_extractor.get_lower_eng_num_text_list, target_extractor.get_lower_eng_num_text_list)
+def get_similarity_by_title_text(url, target_url, url_extractor, target_extractor):
+    return _get_similarity_by_extract_function(url, target_url, url_extractor.get_title_text_list, target_extractor.get_title_text_list)
 
 def _get_similarity_by_extract_function(url, target_url, url_extract_function, target_extract_function, is_for_link=True):
     if does_has_scheme(url) ^ does_has_scheme(target_url): raise ExtractorAnalyzeError('URL and target URL should have the same format.')
@@ -138,12 +165,17 @@ if __name__ == '__main__':
     import sys
     with open(sys.argv[1],'r') as data:
         extractor = Extractor(data.read())
+    '''
+    with open(sys.argv[2],'r') as data:
+        t_ext = Extractor(data.read())
+    #'''
 
+    #print is_same_icon('http://www.telecomsource.net:80/showthread.php?3121-What-is-reference-signals-in-LTE','http://www.telecomsource.net/',extractor,t_ext)
     #print extractor.get_a_href_list()
     #print extractor.get_href_list()
     #print extractor.get_title_list()
     #print extractor.get_shortcut_icon_list()
-    print extractor.get_stylesheet_href_list()
+    #print extractor.get_stylesheet_href_list()
     print extractor.get_script_src_list()
     #print extractor.get_password_input_list()
     #print extractor.get_limited_visible_text_list()
