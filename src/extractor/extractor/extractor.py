@@ -14,6 +14,7 @@ RE_SCRIPT = re.compile('<\s*script\s+[^>]*type\s*=\s*[\'"]text/javascript[\'"][^
 RE_INPUT_TAG_PASSWORD_TYPE = re.compile('<\s*input\s+[^>]*type\s*=\s*[\'"]password[\'"][^>]*>')
 RE_INPUT_TAG_TEXT_TYPE = re.compile('<\s*input\s+[^>]*type\s*=\s*[\'"]text[\'"][^>]*>')
 RE_LIMITED_VISIBLE_TEXT = re.compile('<\s*(label|p|h[0-9]|div|span|td|a|br)\s*[^>]*>([^<>]+)')
+RE_ENG_NUM_TEXT = re.compile('[0-9a-zA-Z]+')
 
 DEFAULT_SHORTCUT_ICON = 'favicon.ico'
 
@@ -42,6 +43,8 @@ class Extractor(object):
         return RE_INPUT_TAG_TEXT_TYPE.findall(self.page)
     def get_limited_visible_text_list(self):
         return [tok[1].strip() for tok in RE_LIMITED_VISIBLE_TEXT.findall(self.page) if tok[1].strip()]
+    def get_lower_eng_num_text_list(self):
+        return [tok.lower().strip() for tok in RE_ENG_NUM_TEXT.findall(self.page)]
 
     def _get_href_from_tag(self, tags):
         return self._get_re_result_from_tag(RE_HREF, tags)
@@ -82,23 +85,30 @@ def get_similarity_by_stylesheet(url, target_url, url_extractor, target_extracto
 def get_similarity_by_script(url, target_url, url_extractor, target_extractor):
     return _get_similarity_by_extract_function(url, target_url, url_extractor.get_script_src_list, target_extractor.get_script_src_list)
 
-def _get_similarity_by_extract_function(url, target_url, url_extract_function, target_extract_function):
+def get_similarity_by_text(url, target_url, url_extractor, target_extractor):
+    return _get_similarity_by_extract_function(url, target_url, url_extractor.get_lower_eng_num_text_list, target_extractor.get_lower_eng_num_text_list)
+
+def _get_similarity_by_extract_function(url, target_url, url_extract_function, target_extract_function, is_for_link=True):
     if does_has_scheme(url) ^ does_has_scheme(target_url): raise ExtractorAnalyzeError('URL and target URL should have the same format.')
 
     # use filename to decrease FP [case] "http://012.tw/houvyWZ"
-    url_extract_set = set([extract_url.split('/')[-1].split('?')[0] for extract_url in url_extract_function()])
-    len_url_extract_set = len(url_extract_set)
+    if is_for_link:
+        url_extract_collection = set([extract_url.split('/')[-1].split('?')[0] for extract_url in url_extract_function()])
+        target_extract_collection = set([extract_url.split('/')[-1].split('?')[0] for extract_url in target_extract_function()])
+    else:
+        url_extract_collection = [extract_item for extract_item in url_extract_function()]
+        target_extract_collection = [extract_item for extract_item in target_extract_function()]
 
-    target_extract_set = set([extract_url.split('/')[-1].split('?')[0] for extract_url in target_extract_function()])
-    len_target_extract_set = len(target_extract_set)
+    len_url_extract_collection = len(url_extract_collection)
+    len_target_extract_collection = len(target_extract_collection)
     
-    common_count = _common_item_count(url_extract_set, target_extract_set)
+    common_count = _common_item_count(url_extract_collection, target_extract_collection)
 
     # Both url have no extractsheet link. It's a common feature, so define the ratio as 1
-    common_ratio_of_min = 1 if len_url_extract_set == 0 and len_target_extract_set == 0 \
-                            else common_count / float(max(1, min(len_url_extract_set, len_target_extract_set)))
+    common_ratio_of_min = 1 if len_url_extract_collection == 0 and len_target_extract_collection == 0 \
+                            else common_count / float(max(1, min(len_url_extract_collection, len_target_extract_collection)))
 
-    return common_ratio_of_min, common_count, len_url_extract_set, len_target_extract_set
+    return common_ratio_of_min, common_count, len_url_extract_collection, len_target_extract_collection
 
 
 def _common_item_count(iter_a, iter_b):
@@ -122,7 +132,7 @@ def get_path(url):
 def does_has_scheme(url):
     tok = urlparse(url)
     return str(tok.scheme).strip() != ''
-    
+
 
 if __name__ == '__main__':
     import sys
