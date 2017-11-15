@@ -89,7 +89,7 @@ def is_same_icon(url, target_url, url_extractor, target_extractor):
 
     url_icon_set = set([_reduced_normalize_url(urljoin(url, icon_url.strip())) \
         for icon_url in url_extractor.get_shortcut_icon_list() if icon_url.strip()])
-    if not url_icon_set: url_icon_set.add(_reduced_normalize_urlurljoin(get_domain_url(url), DEFAULT_SHORTCUT_ICON)))
+    if not url_icon_set: url_icon_set.add(_reduced_normalize_url(urljoin(get_domain_url(url), DEFAULT_SHORTCUT_ICON)))
     len_url_icon_set = len(url_icon_set)
 
     target_icon_set = set([_reduced_normalize_url(urljoin(target_url, icon_url.strip())) \
