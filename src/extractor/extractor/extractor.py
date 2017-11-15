@@ -132,7 +132,7 @@ def _get_similarity_by_extract_function(url, target_url, url_extract_function, t
     common_count = _common_item_count(url_extract_collection, target_extract_collection)
 
     # Both url have no extractsheet link. It's a common feature, so define the ratio as 1
-    common_ratio_of_min = 1 if len_url_extract_collection == 0 and len_target_extract_collection == 0 \
+    common_ratio_of_min = -1000 if len_url_extract_collection == 0 and len_target_extract_collection == 0 \
                             else common_count / float(max(1, min(len_url_extract_collection, len_target_extract_collection)))
 
     return common_ratio_of_min, common_count, len_url_extract_collection, len_target_extract_collection
