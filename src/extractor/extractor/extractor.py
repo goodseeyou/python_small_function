@@ -89,22 +89,29 @@ def is_same_icon(url, target_url, url_extractor, target_extractor):
 
     url_icon_set = set([_reduced_normalize_url(urljoin(url, icon_url.strip())) \
         for icon_url in url_extractor.get_shortcut_icon_list() if icon_url.strip()])
-    if not url_icon_set: url_icon_set.add(_reduced_normalize_url(urljoin(get_domain_url(url), DEFAULT_SHORTCUT_ICON)))
     len_url_icon_set = len(url_icon_set)
 
     target_icon_set = set([_reduced_normalize_url(urljoin(target_url, icon_url.strip())) \
         for icon_url in target_extractor.get_shortcut_icon_list() if icon_url.strip()])
-    if not target_icon_set: target_icon_set.add(_reduced_normalize_url(urljoin(get_domain_url(target_url), DEFAULT_SHORTCUT_ICON)))
     len_target_icon_set = len(target_icon_set)
 
-    does_has_same = False
-    for url_icon in url_icon_set:
-        if url_icon in target_icon_set:
-            does_has_same = True
-            break
+    does_has_same_without_default = _does_has_same_item(url_icon_set, target_icon_set)
 
-    return does_has_same, len_url_icon_set, len_target_icon_set, url_icon_set, target_icon_set
+    does_has_same_with_default = True if does_has_same_without_default else False
+    if not does_has_same_with_default:
+        tmp_url_icon_set = set([url for url in url_icon_set])
+        tmp_target_icon_set = set([url for url in target_icon_set])
+        if not tmp_url_icon_set: tmp_url_icon_set.add(_reduced_normalize_url(urljoin(get_domain_url(url), DEFAULT_SHORTCUT_ICON)))
+        if not tmp_target_icon_set: tmp_target_icon_set.add(_reduced_normalize_url(urljoin(get_domain_url(target_url), DEFAULT_SHORTCUT_ICON)))
+        does_has_same_with_default = _does_has_same_item(tmp_url_icon_set, tmp_target_icon_set)
 
+    return does_has_same_without_default, does_has_same_with_default, len_url_icon_set, len_target_icon_set, url_icon_set, target_icon_set
+
+def _does_has_same_item(iter_a, iter_b):
+    for a in iter_a:
+        if a in iter_b:
+            return True
+    return False
 
 def get_similarity_by_stylesheet(url, target_url, url_extractor, target_extractor):
     return _get_similarity_by_extract_function(url, target_url, url_extractor.get_stylesheet_href_list, target_extractor.get_stylesheet_href_list)
