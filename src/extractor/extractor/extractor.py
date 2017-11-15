@@ -103,7 +103,7 @@ def is_same_icon(url, target_url, url_extractor, target_extractor):
             does_has_same = True
             break
 
-    return does_has_same, len_url_icon_set, len_target_icon_set
+    return does_has_same, len_url_icon_set, len_target_icon_set, url_icon_set, target_icon_set
 
 
 def get_similarity_by_stylesheet(url, target_url, url_extractor, target_extractor):
