@@ -13,7 +13,7 @@ RE_STYLESHEET = re.compile('<\s*link\s+[^>]*rel\s*=\s*[\'"]stylesheet[\'"][^>]*?
 RE_SCRIPT = re.compile('<\s*script\s+[^>]*type\s*=\s*[\'"]text/javascript[\'"][^>]*?>\s*</script>')
 RE_INPUT_TAG_PASSWORD_TYPE = re.compile('<\s*input\s+[^>]*type\s*=\s*[\'"]password[\'"][^>]*>')
 RE_INPUT_TAG_TEXT_TYPE = re.compile('<\s*input\s+[^>]*type\s*=\s*[\'"]text[\'"][^>]*>')
-RE_LIMITED_VISIBLE_TEXT = re.compile('<\s*(label|p|h[0-9]|div|span|td|a|br)\s*[^>]*>([^<>]+)')
+RE_LIMITED_VISIBLE_TEXT = re.compile('<\s*(b|font|label|p|h[0-9]|div|span|tr|td|a|br)\s*[^>]*>([^<>]+)')
 RE_ENG_NUM_TEXT = re.compile('[0-9a-zA-Z]+')
 
 STOP_WORD = ('div', 'span', 'input', 'form', 'link', 'script', 'meta', 'style', 'img', 'h1', 'h2', 'h3', 'p', 'br', 'class', 'id', 'tr', 'td', 'label', 'a')
