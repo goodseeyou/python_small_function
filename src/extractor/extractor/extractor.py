@@ -13,6 +13,9 @@ RE_STYLESHEET = re.compile('<\s*link\s+[^>]*rel\s*=\s*[\'"]stylesheet[\'"][^>]*?
 RE_SCRIPT = re.compile('<\s*script\s+[^>]*type\s*=\s*[\'"]text/javascript[\'"][^>]*?>\s*</script>')
 RE_INPUT_TAG_PASSWORD_TYPE = re.compile('<\s*input\s+[^>]*type\s*=\s*[\'"]password[\'"][^>]*>')
 RE_INPUT_TAG_TEXT_TYPE = re.compile('<\s*input\s+[^>]*type\s*=\s*[\'"]text[\'"][^>]*>')
+RE_INPUT_TAG_SUBMIT_TYPE = re.compile('<\s*input\s+[^>]*type\s*=\s*[\'"]submit[\'"][^>]*>')
+RE_SELECT_TAG = re.compile('<\s*select\s*[^>]+>')
+RE_OPTION_TAG = re.compile('<\s*option\s*[^>]+>')
 RE_LIMITED_VISIBLE_TEXT = re.compile('<\s*(b|font|label|p|h[0-9]|div|span|tr|td|a|br)\s*[^>]*>([^<>]+)')
 RE_ENG_NUM_TEXT = re.compile('[0-9a-zA-Z]+')
 
@@ -43,6 +46,12 @@ class Extractor(object):
         return RE_INPUT_TAG_PASSWORD_TYPE.findall(self.page)
     def get_text_input_list(self):
         return RE_INPUT_TAG_TEXT_TYPE.findall(self.page)
+    def get_submit_input_list(self):
+        return RE_INPUT_TAG_SUBMIT_TYPE.findall(self.page)
+    def get_select_list(self):
+        return RE_SELECT_TAG.findall(self.page)
+    def get_option_list(self):
+        return RE_OPTION_TAG.findall(self.page)
     def get_limited_visible_text_list(self):
         return [tok[1].strip() for tok in RE_LIMITED_VISIBLE_TEXT.findall(self.page) if tok[1].strip()]
     def get_title_text_list(self):
@@ -168,6 +177,22 @@ def does_has_scheme(url):
     return str(tok.scheme).strip() != ''
 
 
+def is_potential_creditcard_form(extractor):
+    len_text_input = len(extractor.get_text_input_list())
+    len_password_input = len(extractor.get_password_input_list())
+    len_submit_input = len(extractor.get_submit_input_list())
+    len_select = len(extractor.get_select_list())
+    len_option = len(extractor.get_option_list())
+    if len_submit_input > 0:
+        has_enough_select = True if len_select >= 2 and len_option >= 17 else False
+        sum_of_input = len_text_input + len_password_input
+        if has_enough_select:
+            return sum_of_input >= 2
+        else:
+            return sum_of_input >= 4
+
+    return False
+
 if __name__ == '__main__':
     import sys
     with open(sys.argv[1],'r') as data:
@@ -183,6 +208,7 @@ if __name__ == '__main__':
     #print extractor.get_title_list()
     #print extractor.get_shortcut_icon_list()
     #print extractor.get_stylesheet_href_list()
-    print extractor.get_script_src_list()
+    #print extractor.get_script_src_list()
     #print extractor.get_password_input_list()
     #print extractor.get_limited_visible_text_list()
+    print is_potential_creditcard_form(extractor)
