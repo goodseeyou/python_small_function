@@ -1,4 +1,6 @@
 import lxml
+from bs4 import BeautifulSoup
+from bs4.element import Comment
 import re
 from urlparse import urljoin
 from urlparse import urlparse
@@ -16,8 +18,8 @@ RE_INPUT_TAG_TEXT_TYPE = re.compile('<\s*input\s+[^>]*type\s*=\s*[\'"]text[\'"][
 RE_INPUT_TAG_SUBMIT_TYPE = re.compile('<\s*input\s+[^>]*type\s*=\s*[\'"]submit[\'"][^>]*>')
 RE_SELECT_TAG = re.compile('<\s*select\s*[^>]+>')
 RE_OPTION_TAG = re.compile('<\s*option\s*[^>]+>')
-# TODO use lxml rather than regx
-RE_LIMITED_VISIBLE_TEXT = re.compile('<\s*(b|font|label|p|h[0-9]|div|span|tr|td|th|a)\s*[^>]*>([^<>]+)')
+# use beautifulsoup to replace regx
+#RE_LIMITED_VISIBLE_TEXT = re.compile('<\s*(b|font|label|p|h[0-9]|div|span|tr|td|th|a)\s*[^>]*>([^<>]+)')
 RE_ENG_NUM_TEXT = re.compile('[0-9a-zA-Z]+')
 
 STOP_WORD = ('div', 'span', 'input', 'form', 'link', 'script', 'meta', 'style', 'img', 'h1', 'h2', 'h3', 'p', 'br', 'class', 'id', 'tr', 'td', 'label', 'a')
@@ -54,7 +56,8 @@ class Extractor(object):
     def get_option_list(self):
         return RE_OPTION_TAG.findall(self.page)
     def get_limited_visible_text_list(self):
-        return [tok[1].strip() for tok in RE_LIMITED_VISIBLE_TEXT.findall(self.page) if tok[1].strip()]
+        #return [tok[1].strip() for tok in RE_LIMITED_VISIBLE_TEXT.findall(self.page) if tok[1].strip()]
+        return text_from_html(self.page)
     def get_title_text_list(self):
         return self.get_lower_eng_num_text_list(text = ' '.join(self.get_title_list()))
     def get_lower_eng_num_text_list(self, text=None):
@@ -194,6 +197,19 @@ def is_potential_creditcard_form(extractor):
 
     return False
 
+def tag_visible(element):
+    if element.parent.name in ['style', 'script', 'head', 'title', 'meta', '[document]']:
+        return False
+    if isinstance(element, Comment):
+        return False
+    return True
+
+def text_from_html(body):
+    soup = BeautifulSoup(body, 'html.parser')
+    texts = soup.findAll(text=True)
+    visible_texts = filter(tag_visible, texts)  
+    return u" ".join(t.strip() for t in visible_texts)
+
 if __name__ == '__main__':
     import sys
     with open(sys.argv[1],'r') as data:
@@ -211,5 +227,5 @@ if __name__ == '__main__':
     #print extractor.get_stylesheet_href_list()
     #print extractor.get_script_src_list()
     #print extractor.get_password_input_list()
-    #print extractor.get_limited_visible_text_list()
-    print is_potential_creditcard_form(extractor)
+    print extractor.get_limited_visible_text_list()
+    #print is_potential_creditcard_form(extractor)
