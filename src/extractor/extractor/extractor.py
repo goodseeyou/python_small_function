@@ -16,7 +16,8 @@ RE_INPUT_TAG_TEXT_TYPE = re.compile('<\s*input\s+[^>]*type\s*=\s*[\'"]text[\'"][
 RE_INPUT_TAG_SUBMIT_TYPE = re.compile('<\s*input\s+[^>]*type\s*=\s*[\'"]submit[\'"][^>]*>')
 RE_SELECT_TAG = re.compile('<\s*select\s*[^>]+>')
 RE_OPTION_TAG = re.compile('<\s*option\s*[^>]+>')
-RE_LIMITED_VISIBLE_TEXT = re.compile('<\s*(b|font|label|p|h[0-9]|div|span|tr|td|a|br)\s*[^>]*>([^<>]+)')
+# TODO use lxml rather than regx
+RE_LIMITED_VISIBLE_TEXT = re.compile('<\s*(b|font|label|p|h[0-9]|div|span|tr|td|th|a)\s*[^>]*>([^<>]+)')
 RE_ENG_NUM_TEXT = re.compile('[0-9a-zA-Z]+')
 
 STOP_WORD = ('div', 'span', 'input', 'form', 'link', 'script', 'meta', 'style', 'img', 'h1', 'h2', 'h3', 'p', 'br', 'class', 'id', 'tr', 'td', 'label', 'a')
