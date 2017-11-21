@@ -130,21 +130,27 @@ def _does_has_same_item(iter_a, iter_b):
     return False
 
 def get_similarity_by_stylesheet(url, target_url, url_extractor, target_extractor):
-    return _get_similarity_by_extract_function(url, target_url, url_extractor.get_stylesheet_href_list, target_extractor.get_stylesheet_href_list)
+    return _get_similarity_by_extract_function(url, target_url, url_extractor.get_stylesheet_href_list, target_extractor.get_stylesheet_href_list, is_filename_only=True)
 
 def get_similarity_by_script(url, target_url, url_extractor, target_extractor):
-    return _get_similarity_by_extract_function(url, target_url, url_extractor.get_script_src_list, target_extractor.get_script_src_list)
+    return _get_similarity_by_extract_function(url, target_url, url_extractor.get_script_src_list, target_extractor.get_script_src_list, is_filename_only=True)
 
 def get_similarity_by_title_text(url, target_url, url_extractor, target_extractor):
     return _get_similarity_by_extract_function(url, target_url, url_extractor.get_title_text_list, target_extractor.get_title_text_list)
 
-def _get_similarity_by_extract_function(url, target_url, url_extract_function, target_extract_function, is_for_link=True):
+def get_similarity_by_img(url, target_url, url_extractor, target_extractor):
+    return _get_similarity_by_extract_function(url, target_url, url_extractor.get_img_src_list, target_extractor.get_img_src_list, is_path_only=True)
+
+def _get_similarity_by_extract_function(url, target_url, url_extract_function, target_extract_function, is_filename_only=False, is_path_only=False):
     if does_has_scheme(url) ^ does_has_scheme(target_url): raise ExtractorAnalyzeError('URL and target URL should have the same format.')
 
     # use filename to decrease FP [case] "http://012.tw/houvyWZ"
-    if is_for_link:
+    if is_filename_only:
         url_extract_collection = set([extract_url.split('/')[-1].split('?')[0] for extract_url in url_extract_function()])
         target_extract_collection = set([extract_url.split('/')[-1].split('?')[0] for extract_url in target_extract_function()])
+    elif is_path_only:
+        url_extract_collection = set(['/'.join(_reduced_normalize_url(urljoin(url, extract_url)).split('/')[:-1]) for extract_url in url_extract_function()])
+        target_extract_collection = set(['/'.join(_reduced_normalize_url(urljoin(target_url, extract_url)).split('/')[:-1]) for extract_url in target_extract_function()])
     else:
         url_extract_collection = [extract_item for extract_item in url_extract_function()]
         target_extract_collection = [extract_item for extract_item in target_extract_function()]
@@ -221,7 +227,7 @@ if __name__ == '__main__':
     with open(sys.argv[2],'r') as data:
         t_ext = Extractor(data.read())
     #'''
-
+    #print get_similarity_by_img('http://google.com/','http://google.com', extractor, t_ext)
     #print is_same_icon('http://www.telecomsource.net:80/showthread.php?3121-What-is-reference-signals-in-LTE','http://www.telecomsource.net/',extractor,t_ext)
     #print extractor.get_a_href_list()
     #print extractor.get_href_list()
@@ -229,7 +235,7 @@ if __name__ == '__main__':
     #print extractor.get_shortcut_icon_list()
     #print extractor.get_stylesheet_href_list()
     #print extractor.get_script_src_list()
+    #print extractor.get_img_src_list()
     #print extractor.get_password_input_list()
     #print extractor.get_limited_visible_text_list()
     #print is_potential_creditcard_form(extractor)
-    print extractor.get_img_src_list()
