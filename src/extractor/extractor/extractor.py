@@ -6,13 +6,14 @@ from urlparse import urljoin
 from urlparse import urlparse
 
 
-RE_A_TAG_HREF = re.compile('<\s*a\s+[^>]*\s+href=[\'"]([^\'"]*)[\'"]')
-RE_HREF = re.compile('<\s*[^>]+\s+href=[\'"]([^\'"]*)[\'"]')
-RE_SRC = re.compile('<\s*[^>]+\s+src=[\'"]([^\'"]*)[\'"]')
+RE_A_TAG_HREF = re.compile('<\s*a\s+[^>]*\s+href\s*=\s*[\'"]([^\'"]*)[\'"]')
+RE_HREF = re.compile('<\s*[^>]+\s+href\s*=\s*[\'"]([^\'"]*)[\'"]')
+RE_SRC = re.compile('<\s*[^>]+\s+src\s*=\s*[\'"]([^\'"]*)[\'"]')
 RE_TITLE_TAG = re.compile('<\s*title\s*>([^<>]*)<\s*/\s*title\s*>')
 RE_SHORTCUT_ICON = re.compile('<\s*link\s+[^>]*rel\s*=\s*[\'"]shortcut icon[\'"][^>]*?>')
 RE_STYLESHEET = re.compile('<\s*link\s+[^>]*rel\s*=\s*[\'"]stylesheet[\'"][^>]*?>')
 RE_SCRIPT = re.compile('<\s*script\s+[^>]*type\s*=\s*[\'"]text/javascript[\'"][^>]*?>\s*</script>')
+RE_IMG = re.compile('<\s*img\s+[^>]*src\s*=\s*[\'"][^\'"<>]+[\'"][^>]*?>')
 RE_INPUT_TAG_PASSWORD_TYPE = re.compile('<\s*input\s+[^>]*type\s*=\s*[\'"]password[\'"][^>]*>')
 RE_INPUT_TAG_TEXT_TYPE = re.compile('<\s*input\s+[^>]*type\s*=\s*[\'"]text[\'"][^>]*>')
 RE_INPUT_TAG_SUBMIT_TYPE = re.compile('<\s*input\s+[^>]*type\s*=\s*[\'"]submit[\'"][^>]*>')
@@ -45,6 +46,8 @@ class Extractor(object):
         return self._get_href_from_tag(RE_STYLESHEET.findall(self.page))
     def get_script_src_list(self):
         return self._get_src_from_tag(RE_SCRIPT.findall(self.page))
+    def get_img_src_list(self):
+        return self._get_src_from_tag(RE_IMG.findall(self.page))
     def get_password_input_list(self):
         return RE_INPUT_TAG_PASSWORD_TYPE.findall(self.page)
     def get_text_input_list(self):
@@ -227,5 +230,6 @@ if __name__ == '__main__':
     #print extractor.get_stylesheet_href_list()
     #print extractor.get_script_src_list()
     #print extractor.get_password_input_list()
-    print extractor.get_limited_visible_text_list()
+    #print extractor.get_limited_visible_text_list()
     #print is_potential_creditcard_form(extractor)
+    print extractor.get_img_src_list()
