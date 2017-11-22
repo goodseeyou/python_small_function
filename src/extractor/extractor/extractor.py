@@ -22,6 +22,7 @@ RE_OPTION_TAG = re.compile('<\s*option\s*[^>]+>')
 # use beautifulsoup to replace regx
 #RE_LIMITED_VISIBLE_TEXT = re.compile('<\s*(b|font|label|p|h[0-9]|div|span|tr|td|th|a)\s*[^>]*>([^<>]+)')
 RE_ENG_NUM_TEXT = re.compile('[0-9a-zA-Z]+')
+RE_DISPLAY_NONE = re.compile('display\s*:\s*[^;]*none')
 
 STOP_WORD = ('div', 'span', 'input', 'form', 'link', 'script', 'meta', 'style', 'img', 'h1', 'h2', 'h3', 'p', 'br', 'class', 'id', 'tr', 'td', 'label', 'a')
 
@@ -216,11 +217,25 @@ def is_potential_email_form(extractor):
     return False
 
 def tag_visible(element):
-    if element.parent.name in ['style', 'script', 'head', 'title', 'meta', '[document]']:
+    if element.parent.name in ['style', 'script', 'head', 'title', 'meta', '[document]', 'noscript']:
         return False
     if isinstance(element, Comment):
         return False
+    if is_hiden(element):
+        return False
     return True
+
+def is_hiden(element):
+    if not element: return False
+    for parent in element.parents:
+        if parent.name in ('body', 'html', 'head', 'style', 'script',):
+            return False
+        if parent.attrs.get('aria-hidden', '').lower() == 'true':
+            return True
+        if RE_DISPLAY_NONE.search(parent.attrs.get('style', '')):
+            return True
+
+    return False
 
 def text_from_html(body):
     soup = BeautifulSoup(body, 'lxml')
@@ -246,5 +261,5 @@ if __name__ == '__main__':
     #print extractor.get_script_src_list()
     #print extractor.get_img_src_list()
     #print extractor.get_password_input_list()
-    #print extractor.get_limited_visible_text_list()
+    print extractor.get_limited_visible_text_list()
     #print is_potential_creditcard_form(extractor)
