@@ -60,8 +60,10 @@ class Extractor(object):
     def get_option_list(self):
         return RE_OPTION_TAG.findall(self.page)
     def get_limited_visible_text_list(self):
-        #return [tok[1].strip() for tok in RE_LIMITED_VISIBLE_TEXT.findall(self.page) if tok[1].strip()]
-        return text_from_html(self.page)
+        try:
+            return text_from_html(self.page)
+        except (TypeError, UnicodeDecodeError) as e:
+            raise ExtractorError(e)
     def get_title_text_list(self):
         return self.get_lower_eng_num_text_list(text = ' '.join(self.get_title_list()))
     def get_lower_eng_num_text_list(self, text=None):
@@ -217,7 +219,7 @@ def is_potential_email_form(extractor):
     return False
 
 def tag_visible(element):
-    if element.parent.name in ['style', 'script', 'head', 'title', 'meta', '[document]', 'noscript']:
+    if element.parent.name in ('style', 'script', 'head', 'title', 'meta', '[document]', 'noscript', ):
         return False
     if isinstance(element, Comment):
         return False
@@ -228,7 +230,10 @@ def tag_visible(element):
 def is_hiden(element):
     if not element: return False
     for parent in element.parents:
-        if parent.name in ('body', 'html', 'head', 'style', 'script',):
+        if not parent: return False
+        if parent.name in ('style', 'script', 'head', 'title', 'meta', 'noscript', ):
+            return True
+        if parent.name in ('body', 'html', ):
             return False
         if parent.attrs.get('aria-hidden', '').lower() == 'true':
             return True
@@ -241,7 +246,7 @@ def text_from_html(body):
     soup = BeautifulSoup(body, 'lxml')
     texts = soup.findAll(text=True)
     visible_texts = filter(tag_visible, texts)  
-    return u" ".join(t.strip() for t in visible_texts if t.strip())
+    return u" ".join(t.strip() for t in visible_texts if t.strip() and t)
 
 if __name__ == '__main__':
     import sys
