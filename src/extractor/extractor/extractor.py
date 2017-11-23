@@ -19,10 +19,9 @@ RE_INPUT_TAG_TEXT_TYPE = re.compile('<\s*input\s+[^>]*type\s*=\s*[\'"]text[\'"][
 RE_INPUT_TAG_SUBMIT_TYPE = re.compile('<\s*input\s+[^>]*type\s*=\s*[\'"]submit[\'"][^>]*>')
 RE_SELECT_TAG = re.compile('<\s*select\s*[^>]+>')
 RE_OPTION_TAG = re.compile('<\s*option\s*[^>]+>')
-# use beautifulsoup to replace regx
-#RE_LIMITED_VISIBLE_TEXT = re.compile('<\s*(b|font|label|p|h[0-9]|div|span|tr|td|th|a)\s*[^>]*>([^<>]+)')
 RE_ENG_NUM_TEXT = re.compile('[0-9a-zA-Z]+')
 RE_DISPLAY_NONE = re.compile('display\s*:\s*[^;]*none')
+RE_URL_FROM_META_REFRESH = re.compile('(URL|url)\s*=\s*(.*)')
 
 STOP_WORD = ('div', 'span', 'input', 'form', 'link', 'script', 'meta', 'style', 'img', 'h1', 'h2', 'h3', 'p', 'br', 'class', 'id', 'tr', 'td', 'label', 'a')
 
@@ -33,6 +32,7 @@ class ExtractorError(Exception): pass
 class ExtractorAnalyzeError(Exception): pass
 class Extractor(object):
     def __init__(self, page):
+        self.soup = BeautifulSoup(page, 'lxml')
         self.page = page.replace('\n', '').lower()
 
     def get_a_href_list(self):
@@ -61,7 +61,7 @@ class Extractor(object):
         return RE_OPTION_TAG.findall(self.page)
     def get_limited_visible_text_list(self):
         try:
-            return text_from_html(self.page)
+            return self.text_from_html()
         except (TypeError, UnicodeDecodeError) as e:
             raise ExtractorError(e)
     def get_title_text_list(self):
@@ -82,6 +82,76 @@ class Extractor(object):
            for r in compiled_re.findall(tag):
                 if r.strip(): _set.add(r)
         return list(_set) 
+
+
+    def _tag_visible(self, element):
+        if element.parent.name in ('style', 'script', 'head', 'title', 'meta', '[document]', 'noscript', ):
+            return False
+
+        if isinstance(element, Comment):
+            return False
+
+        if self._is_hiden(element):
+            return False
+
+        return True
+    
+
+    def _is_hiden(self, element):
+        if not element: return False
+
+        for parent in element.parents:
+            if not parent: return False
+
+            if parent.name in ('style', 'script', 'head', 'title', 'meta', 'noscript', ):
+                return True
+
+            if parent.name in ('body', 'html', ):
+                return False
+
+            if parent.attrs.get('aria-hidden', '').lower() == 'true':
+                return True
+
+            if RE_DISPLAY_NONE.search(parent.attrs.get('style', '')):
+                return True
+    
+        return False
+    
+
+    def text_from_html(self):
+        texts = self.soup.findAll(text=True)
+        visible_texts = filter(self._tag_visible, texts)  
+
+        return u" ".join(t.strip() for t in visible_texts if t.strip() and t)
+
+
+    def _meta_refresh(self, element):
+        if not element: return False
+
+        if element.parent.name not in ('head', 'html', '[document]', ):
+            return False
+
+        if element.attrs.get('http-equiv', '').strip().lower() == 'refresh':
+            return True
+
+        return False
+    
+
+    def meta_fresh_tag(self):
+        metas = self.soup.findAll('meta')
+        return filter(self._meta_refresh, metas)
+
+
+    def get_meta_fresh_url_list(self):
+        meta_refreshes = self.meta_fresh_tag()
+
+        redirect_url_list = []
+        for value in [t.attrs.get('content','') for t in meta_refreshes] :
+            re_value = RE_URL_FROM_META_REFRESH.search(value)
+            if re_value:
+                redirect_url_list.append(re_value.group(2))
+            
+        return redirect_url_list
 
 
 def _reduced_normalize_url(url):
@@ -218,35 +288,7 @@ def is_potential_email_form(extractor):
 
     return False
 
-def tag_visible(element):
-    if element.parent.name in ('style', 'script', 'head', 'title', 'meta', '[document]', 'noscript', ):
-        return False
-    if isinstance(element, Comment):
-        return False
-    if is_hiden(element):
-        return False
-    return True
 
-def is_hiden(element):
-    if not element: return False
-    for parent in element.parents:
-        if not parent: return False
-        if parent.name in ('style', 'script', 'head', 'title', 'meta', 'noscript', ):
-            return True
-        if parent.name in ('body', 'html', ):
-            return False
-        if parent.attrs.get('aria-hidden', '').lower() == 'true':
-            return True
-        if RE_DISPLAY_NONE.search(parent.attrs.get('style', '')):
-            return True
-
-    return False
-
-def text_from_html(body):
-    soup = BeautifulSoup(body, 'lxml')
-    texts = soup.findAll(text=True)
-    visible_texts = filter(tag_visible, texts)  
-    return u" ".join(t.strip() for t in visible_texts if t.strip() and t)
 
 if __name__ == '__main__':
     import sys
@@ -266,5 +308,6 @@ if __name__ == '__main__':
     #print extractor.get_script_src_list()
     #print extractor.get_img_src_list()
     #print extractor.get_password_input_list()
-    print extractor.get_limited_visible_text_list()
+    #print extractor.get_limited_visible_text_list()
     #print is_potential_creditcard_form(extractor)
+    print extractor.get_meta_fresh_url_list()
