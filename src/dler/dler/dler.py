@@ -40,7 +40,7 @@ meta_cache: meta_cache[input_url] = dict(meta data)
 '''
 class DlerError(Exception): pass
 class Dler(object):
-    def __init__(self, max_thread = 5, cache = None, header_cache = None, meta_cache = None):
+    def __init__(self, max_thread = 5, cache = None, header_cache = None, meta_cache = None, extractor = None):
         self.max_thread = max_thread
         self.thread_pool = {}
         self.condition = threading.Condition()
@@ -48,7 +48,7 @@ class Dler(object):
         self.cache = {} if cache is None else cache
         self.header_cache = {} if header_cache is None else header_cache
         self.meta_cache = {} if meta_cache is None else meta_cache
-        self.extractor = None
+        self.extractor = extractor if extractor else None
 
     def set_extractor(self, extractor):
         self.extractor = extractor
