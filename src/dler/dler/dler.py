@@ -86,13 +86,13 @@ class Dler(object):
             self.cache[url] = {}
             self.header_cache[url] = {}
             self.meta_cache[url] = {}
-            self.thread_pool[url] = DlerThread(url, self.condition, self.event, self.thread_pool, self.cache[url], self.header_cache[url], self.meta_cache[url], user_agent_num, does_content_redirect)
+            self.thread_pool[url] = DlerThread(url, self.condition, self.event, self.thread_pool, self.cache[url], self.header_cache[url], self.meta_cache[url], user_agent_num, does_content_redirect, extractor=self.extractor)
             self.thread_pool[url].start()
 
 
 class DlerThreadError(Exception): pass
 class DlerThread(threading.Thread):
-    def __init__(self, url, condition, event, thread_pool, content_dict, header_dict, meta_dict, user_agent_num, does_content_redirect, max_redirect = None):
+    def __init__(self, url, condition, event, thread_pool, content_dict, header_dict, meta_dict, user_agent_num, does_content_redirect, max_redirect = None, extractor = None):
         threading.Thread.__init__(self)
         self.content_dict = content_dict
         self.header_dict = header_dict
@@ -104,6 +104,7 @@ class DlerThread(threading.Thread):
         self.thread_pool = thread_pool
         self.user_agent_num = user_agent_num
         self.max_redirect = 12 if max_redirect is None else max_redirect
+        self.extractor = extractor if extractor else None
         self.does_content_redirect = does_content_redirect
         ''' TODO accept langauge will be used to target regional, e.g. only open for zh-cn and block if there is ja-jp '''
         self.custom_header = ['Accept-Language:zh-tw,zh-cn,zh-hk,zh-mo,en-us,en-gb,en-ca,fr-fr,de-de,it-it,ja-jp,ru-ru,es-es,pt-br,es-mx,bn-in,da-dk']
@@ -138,7 +139,7 @@ class DlerThread(threading.Thread):
             Lower the content for regular expression match, but it might wrongly update URL and cause 404
             ''' 
             if not do_redirect and self.does_content_redirect:
-                url_set = find_redirect(self.content_dict[url].lower())
+                url_set = self.find_redirect(self.content_dict[url])
                 len_url_set = len(url_set)
 
                 if len_url_set == 1: 
@@ -211,37 +212,38 @@ class DlerThread(threading.Thread):
         return _tmp
 
 
-def find_redirect(lower_page):
-    redirect_url = set()
-
-    #meta refresh url
-    if self.extractor:
-        try:
-            url_extractor = self.extractor.Extractor(self.content_dict[url])
-            for url in url_extractor.get_meta_refresh_url_list():
-                url = url.strip()
-                if url: redirect_url.add(url)
-        except Exception as e:
-            raise DlerThreadError(e)
-    else:
-        before_body = RE_BEFORE_BODY.findall(lower_page)
-        page = ' '.join(before_body) if before_body else lower_page
-        metas = RE_META_TAG.findall(page)
-        for meta in metas:
-            refresh_meta = RE_REFRESH_IN_META.search(meta)
-            if not refresh_meta: continue
-            urls = RE_CONTENT_URL_IN_META.findall(meta)
-            if urls:
-                redirect_url.add(urls[0])
-
-    # javascript redirect
-    scripts = RE_JAVASCRIPT.findall(lower_page)
-    for item in scripts:
-        for url in RE_WINDOW_LOCATION_REDIRECT.findall(item): redirect_url.add(url)
-        for url in RE_DOCUMENT_LOCATION_HREF_REDIRECT.findall(item): redirect_url.add(url)
-        for url in RE_FORM_SUBMIT_REDIRECT.findall(item): redirect_url.add(url)
-
-    return set([url.strip() for url in redirect_url if url.strip()])
+    def find_redirect(self, page):
+        lower_page = page.lower()
+        redirect_url = set()
+    
+        #meta refresh url
+        if self.extractor:
+            try:
+                url_extractor = self.extractor.Extractor(page)
+                for url in url_extractor.get_meta_refresh_url_list():
+                    url = url.strip()
+                    if url: redirect_url.add(url)
+            except Exception as e:
+                raise DlerThreadError(e)
+        else:
+            before_body = RE_BEFORE_BODY.findall(lower_page)
+            page = ' '.join(before_body) if before_body else lower_page
+            metas = RE_META_TAG.findall(page)
+            for meta in metas:
+                refresh_meta = RE_REFRESH_IN_META.search(meta)
+                if not refresh_meta: continue
+                urls = RE_CONTENT_URL_IN_META.findall(meta)
+                if urls:
+                    redirect_url.add(urls[0])
+    
+        # javascript redirect
+        scripts = RE_JAVASCRIPT.findall(lower_page)
+        for item in scripts:
+            for url in RE_WINDOW_LOCATION_REDIRECT.findall(item): redirect_url.add(url)
+            for url in RE_DOCUMENT_LOCATION_HREF_REDIRECT.findall(item): redirect_url.add(url)
+            for url in RE_FORM_SUBMIT_REDIRECT.findall(item): redirect_url.add(url)
+    
+        return set([url.strip() for url in redirect_url if url.strip()])
             
 
 if __name__ == '__main__':
@@ -256,5 +258,8 @@ if __name__ == '__main__':
     #print dler.meta_cache['http://paypal.com'][KEY_META_REDIRECT_PATH]
 
     import sys
+    sys.path.append('/Users/paul_lin/python_small_function/src/extractor/extractor/')
+    import extractor
+    dler.set_extractor(extractor)
     dler.download([sys.argv[1]], True)
     print dler.meta_cache
