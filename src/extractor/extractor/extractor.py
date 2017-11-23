@@ -153,6 +153,15 @@ class Extractor(object):
             
         return redirect_url_list
 
+    def _get_href_value(self, element):
+        element.attrs.get('href', '')
+
+    def get_a_href_list(self):
+        a_tags = self.soup.findAll('a')
+        visible_a_tags = filter(self._tag_visible, a_tags)
+        a_links = [a.attrs.get('href', '').strip() for a in visible_a_tags if 'href' in a.attrs and a.attrs.get('href', '').strip()]
+        return a_links
+    
 
 def _reduced_normalize_url(url):
     tok = urlparse(url)
@@ -310,4 +319,5 @@ if __name__ == '__main__':
     #print extractor.get_password_input_list()
     #print extractor.get_limited_visible_text_list()
     #print is_potential_creditcard_form(extractor)
-    print extractor.get_meta_refresh_url_list()
+    #print extractor.get_meta_refresh_url_list()
+    print extractor.get_a_href_list()
