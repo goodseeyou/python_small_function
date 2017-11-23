@@ -53,7 +53,7 @@ class Dler(object):
     def set_extractor(self, extractor):
         self.extractor = extractor
         
-    def download(self, url_iterable, does_content_redirect=False, timeout_seconds=30):
+    def download(self, url_iterable, does_content_redirect=False, timeout_seconds=30, header_only=False):
         begin_time = time.time()
         try:
             url_iterator = iter(url_iterable)
@@ -72,27 +72,27 @@ class Dler(object):
             _len_url_set = len(url_set)
 
             if _len_thread_pool < self.max_thread and _len_url_set > 0:
-                self._parallel_download(url_set, _len_thread_pool, _len_url_set, user_agent_num, does_content_redirect)
+                self._parallel_download(url_set, _len_thread_pool, _len_url_set, user_agent_num, does_content_redirect, header_only)
 
             ''' TODO check if this sleep is better to keep '''
             time.sleep(0.1) 
 
         return self
 
-    def _parallel_download(self, url_set, len_thread_pool, len_url_set, user_agent_num, does_content_redirect):
+    def _parallel_download(self, url_set, len_thread_pool, len_url_set, user_agent_num, does_content_redirect, header_only):
         quota = self.max_thread - len_thread_pool
         for i in xrange(min(quota, len_url_set)):
             url = url_set.pop()
             self.cache[url] = {}
             self.header_cache[url] = {}
             self.meta_cache[url] = {}
-            self.thread_pool[url] = DlerThread(url, self.condition, self.event, self.thread_pool, self.cache[url], self.header_cache[url], self.meta_cache[url], user_agent_num, does_content_redirect, extractor=self.extractor)
+            self.thread_pool[url] = DlerThread(url, self.condition, self.event, self.thread_pool, self.cache[url], self.header_cache[url], self.meta_cache[url], user_agent_num, does_content_redirect, extractor=self.extractor, header_only=header_only)
             self.thread_pool[url].start()
 
 
 class DlerThreadError(Exception): pass
 class DlerThread(threading.Thread):
-    def __init__(self, url, condition, event, thread_pool, content_dict, header_dict, meta_dict, user_agent_num, does_content_redirect, max_redirect = None, extractor = None):
+    def __init__(self, url, condition, event, thread_pool, content_dict, header_dict, meta_dict, user_agent_num, does_content_redirect, max_redirect = None, extractor = None, header_only=False):
         threading.Thread.__init__(self)
         self.content_dict = content_dict
         self.header_dict = header_dict
@@ -106,6 +106,7 @@ class DlerThread(threading.Thread):
         self.max_redirect = 12 if max_redirect is None else max_redirect
         self.extractor = extractor if extractor else None
         self.does_content_redirect = does_content_redirect
+        self.header_only = header_only
         ''' TODO accept langauge will be used to target regional, e.g. only open for zh-cn and block if there is ja-jp '''
         self.custom_header = ['Accept-Language:zh-tw,zh-cn,zh-hk,zh-mo,en-us,en-gb,en-ca,fr-fr,de-de,it-it,ja-jp,ru-ru,es-es,pt-br,es-mx,bn-in,da-dk']
 
@@ -174,7 +175,11 @@ class DlerThread(threading.Thread):
         c = pycurl.Curl()
         c.setopt(c.URL, url)
         c.setopt(c.HTTPHEADER, self.custom_header)
-        c.setopt(c.WRITEFUNCTION, string_buffer.write)
+        if self.header_only:
+            c.setopt(c.HEADER, 1)
+            c.setopt(c.NOBODY, 1)
+        else:
+            c.setopt(c.WRITEFUNCTION, string_buffer.write)
         c.setopt(c.FOLLOWLOCATION, False)
         c.setopt(c.USERAGENT, CURL_OPT_USER_AGENT_LIST[user_agent_num])
         c.setopt(c.MAXREDIRS, CURL_OPT_MAX_NUM_REDIRECT)
@@ -261,5 +266,8 @@ if __name__ == '__main__':
     sys.path.append('/Users/paul_lin/python_small_function/src/extractor/extractor/')
     import extractor
     dler.set_extractor(extractor)
-    dler.download([sys.argv[1]], True)
+    dler.download([sys.argv[1]], True, header_only=True)
+    #dler.download([sys.argv[1]], True, header_only=False)
+    print dler.header_cache
+    print ''
     print dler.meta_cache
