@@ -35,8 +35,6 @@ class Extractor(object):
         self.soup = BeautifulSoup(page, 'lxml')
         self.page = page.replace('\n', '').lower()
 
-    def get_a_href_list(self):
-        return RE_A_TAG_HREF.findall(self.page)
     def get_href_list(self):
         return RE_HREF.findall(self.page)
     def get_title_list(self):
@@ -307,7 +305,6 @@ if __name__ == '__main__':
     #'''
     #print get_similarity_by_img('http://google.com/','http://google.com', extractor, t_ext)
     #print is_same_icon('http://www.telecomsource.net:80/showthread.php?3121-What-is-reference-signals-in-LTE','http://www.telecomsource.net/',extractor,t_ext)
-    #print extractor.get_a_href_list()
     #print extractor.get_href_list()
     #print extractor.get_title_list()
     #print extractor.get_shortcut_icon_list()
