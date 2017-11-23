@@ -153,8 +153,6 @@ class Extractor(object):
             
         return redirect_url_list
 
-    def _get_href_value(self, element):
-        element.attrs.get('href', '')
 
     def get_a_href_list(self):
         a_tags = self.soup.findAll('a')
