@@ -137,13 +137,13 @@ class Extractor(object):
         return False
     
 
-    def meta_fresh_tag(self):
+    def meta_refresh_tag(self):
         metas = self.soup.findAll('meta')
         return filter(self._meta_refresh, metas)
 
 
-    def get_meta_fresh_url_list(self):
-        meta_refreshes = self.meta_fresh_tag()
+    def get_meta_refresh_url_list(self):
+        meta_refreshes = self.meta_refresh_tag()
 
         redirect_url_list = []
         for value in [t.attrs.get('content','') for t in meta_refreshes] :
@@ -310,4 +310,4 @@ if __name__ == '__main__':
     #print extractor.get_password_input_list()
     #print extractor.get_limited_visible_text_list()
     #print is_potential_creditcard_form(extractor)
-    print extractor.get_meta_fresh_url_list()
+    print extractor.get_meta_refresh_url_list()

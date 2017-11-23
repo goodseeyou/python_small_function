@@ -48,7 +48,11 @@ class Dler(object):
         self.cache = {} if cache is None else cache
         self.header_cache = {} if header_cache is None else header_cache
         self.meta_cache = {} if meta_cache is None else meta_cache
-    
+        self.extractor = None
+
+    def set_extractor(self, extractor):
+        self.extractor = extractor
+        
     def download(self, url_iterable, does_content_redirect=False, timeout_seconds=30):
         begin_time = time.time()
         try:
@@ -210,17 +214,27 @@ class DlerThread(threading.Thread):
 def find_redirect(lower_page):
     redirect_url = set()
 
-    # TODO improve meta redirect function
-    before_body = RE_BEFORE_BODY.findall(lower_page)
-    page = ' '.join(before_body) if before_body else lower_page
-    metas = RE_META_TAG.findall(page)
-    for meta in metas:
-        refresh_meta = RE_REFRESH_IN_META.search(meta)
-        if not refresh_meta: continue
-        urls = RE_CONTENT_URL_IN_META.findall(meta)
-        if urls:
-            redirect_url.add(urls[0])
+    #meta refresh url
+    if self.extractor:
+        try:
+            url_extractor = self.extractor.Extractor(self.content_dict[url])
+            for url in url_extractor.get_meta_refresh_url_list():
+                url = url.strip()
+                if url: redirect_url.add(url)
+        except Exception as e:
+            raise DlerThreadError(e)
+    else:
+        before_body = RE_BEFORE_BODY.findall(lower_page)
+        page = ' '.join(before_body) if before_body else lower_page
+        metas = RE_META_TAG.findall(page)
+        for meta in metas:
+            refresh_meta = RE_REFRESH_IN_META.search(meta)
+            if not refresh_meta: continue
+            urls = RE_CONTENT_URL_IN_META.findall(meta)
+            if urls:
+                redirect_url.add(urls[0])
 
+    # javascript redirect
     scripts = RE_JAVASCRIPT.findall(lower_page)
     for item in scripts:
         for url in RE_WINDOW_LOCATION_REDIRECT.findall(item): redirect_url.add(url)
