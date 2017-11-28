@@ -27,6 +27,11 @@ STOP_WORD = ('div', 'span', 'input', 'form', 'link', 'script', 'meta', 'style', 
 
 DEFAULT_SHORTCUT_ICON = 'favicon.ico'
 
+COMPARE_TARGET_FULL = 'full'
+COMPARE_TARGET_PATH_NO_QUERY = 'path_no_query'
+COMPARE_TARGET_NO_FILENAME = 'no_filename'
+COMPARE_TARGET_FILENAME = 'filename'
+
 
 class ExtractorError(Exception): pass
 class ExtractorAnalyzeError(Exception): pass
@@ -208,30 +213,35 @@ def _does_has_same_item(iter_a, iter_b):
     return False
 
 def get_similarity_by_stylesheet(url, target_url, url_extractor, target_extractor):
-    return _get_similarity_by_extract_function(url, target_url, url_extractor.get_stylesheet_href_list, target_extractor.get_stylesheet_href_list, is_filename_only=True)
+    return _get_similarity_by_extract_function(url, target_url, url_extractor.get_stylesheet_href_list, target_extractor.get_stylesheet_href_list, compare_target=COMPARE_TARGET_FILENAME)
 
 def get_similarity_by_script(url, target_url, url_extractor, target_extractor):
-    return _get_similarity_by_extract_function(url, target_url, url_extractor.get_script_src_list, target_extractor.get_script_src_list, is_filename_only=True)
+    return _get_similarity_by_extract_function(url, target_url, url_extractor.get_script_src_list, target_extractor.get_script_src_list, compare_target=COMPARE_TARGET_FILENAME)
 
 def get_similarity_by_title_text(url, target_url, url_extractor, target_extractor):
     return _get_similarity_by_extract_function(url, target_url, url_extractor.get_title_text_list, target_extractor.get_title_text_list)
 
 def get_similarity_by_img(url, target_url, url_extractor, target_extractor):
-    return _get_similarity_by_extract_function(url, target_url, url_extractor.get_img_src_list, target_extractor.get_img_src_list, is_path_only=True)
+    return _get_similarity_by_extract_function(url, target_url, url_extractor.get_img_src_list, target_extractor.get_img_src_list, compare_target=COMPARE_TARGET_NO_FILENAME)
 
-def _get_similarity_by_extract_function(url, target_url, url_extract_function, target_extract_function, is_filename_only=False, is_path_only=False):
+def _get_similarity_by_extract_function(url, target_url, url_extract_function, target_extract_function, compare_target=COMPARE_TARGET_FULL):
     if does_has_scheme(url) ^ does_has_scheme(target_url): raise ExtractorAnalyzeError('URL and target URL should have the same format.')
 
     # use filename to decrease FP [case] "http://012.tw/houvyWZ"
-    if is_filename_only:
-        url_extract_collection = set([extract_url.split('/')[-1].split('?')[0] for extract_url in url_extract_function()])
-        target_extract_collection = set([extract_url.split('/')[-1].split('?')[0] for extract_url in target_extract_function()])
-    elif is_path_only:
-        url_extract_collection = set(['/'.join(_reduced_normalize_url(urljoin(url, extract_url)).split('/')[:-1]) for extract_url in url_extract_function()])
-        target_extract_collection = set(['/'.join(_reduced_normalize_url(urljoin(target_url, extract_url)).split('/')[:-1]) for extract_url in target_extract_function()])
-    else:
+    if compare_target == COMPARE_TARGET_FULL:
         url_extract_collection = [extract_item for extract_item in url_extract_function()]
         target_extract_collection = [extract_item for extract_item in target_extract_function()]
+    elif compare_target == COMPARE_TARGET_NO_FILENAME:
+        url_extract_collection = set(['/'.join(_reduced_normalize_url(urljoin(url, extract_url)).split('/')[:-1]) for extract_url in url_extract_function()])
+        target_extract_collection = set(['/'.join(_reduced_normalize_url(urljoin(target_url, extract_url)).split('/')[:-1]) for extract_url in target_extract_function()])
+    elif compare_target == COMPARE_TARGET_FILENAME:
+        url_extract_collection = set([extract_url.split('/')[-1].split('?')[0] for extract_url in url_extract_function()])
+        target_extract_collection = set([extract_url.split('/')[-1].split('?')[0] for extract_url in target_extract_function()])
+    elif compare_target == COMPARE_TARGET_PATH_NO_QUERY:
+        url_extract_collection = set(['/'.join(_reduced_normalize_url(urljoin(url, extract_url)).split('?')[0]) for extract_url in url_extract_function()])
+        target_extract_collection = set(['/'.join(_reduced_normalize_url(urljoin(target_url, extract_url)).split('/')[:-1]) for extract_url in target_extract_function()])
+    else:
+        raise ExtractorError('invalid compare target %s for target_url: %s' % (compare_taret, target_url))
 
     len_url_extract_collection = len(url_extract_collection)
     len_target_extract_collection = len(target_extract_collection)
