@@ -213,10 +213,10 @@ def _does_has_same_item(iter_a, iter_b):
     return False
 
 def get_similarity_by_stylesheet(url, target_url, url_extractor, target_extractor):
-    return _get_similarity_by_extract_function(url, target_url, url_extractor.get_stylesheet_href_list, target_extractor.get_stylesheet_href_list, compare_target=COMPARE_TARGET_FILENAME)
+    return _get_similarity_by_extract_function(url, target_url, url_extractor.get_stylesheet_href_list, target_extractor.get_stylesheet_href_list, compare_target=COMPARE_TARGET_PATH_NO_QUERY)
 
 def get_similarity_by_script(url, target_url, url_extractor, target_extractor):
-    return _get_similarity_by_extract_function(url, target_url, url_extractor.get_script_src_list, target_extractor.get_script_src_list, compare_target=COMPARE_TARGET_FILENAME)
+    return _get_similarity_by_extract_function(url, target_url, url_extractor.get_script_src_list, target_extractor.get_script_src_list, compare_target=COMPARE_TARGET_PATH_NO_QUERY)
 
 def get_similarity_by_title_text(url, target_url, url_extractor, target_extractor):
     return _get_similarity_by_extract_function(url, target_url, url_extractor.get_title_text_list, target_extractor.get_title_text_list)
