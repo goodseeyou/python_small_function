@@ -176,7 +176,6 @@ class DlerThread(threading.Thread):
         c.setopt(c.URL, url)
         c.setopt(c.HTTPHEADER, self.custom_header)
         if self.header_only:
-            c.setopt(c.HEADER, 1)
             c.setopt(c.NOBODY, 1)
         else:
             c.setopt(c.WRITEFUNCTION, string_buffer.write)
