@@ -164,6 +164,11 @@ class Extractor(object):
         return a_links
     
 
+def _get_path_structure(reduced_normalize_url):
+    url = reduced_normalize_url
+    return '/%s' % '/'.join(url.split('?')[0].split('/')[1:-1] + [''])
+    
+
 def _reduced_normalize_url(url):
     tok = urlparse(url)
 
@@ -238,8 +243,8 @@ def _get_similarity_by_extract_function(url, target_url, url_extract_function, t
         url_extract_collection = set([extract_url.split('/')[-1].split('?')[0] for extract_url in url_extract_function()])
         target_extract_collection = set([extract_url.split('/')[-1].split('?')[0] for extract_url in target_extract_function()])
     elif compare_target == COMPARE_TARGET_PATH_NO_QUERY:
-        url_extract_collection = set(['/'.join(_reduced_normalize_url(urljoin(url, extract_url)).split('?')[0]) for extract_url in url_extract_function()])
-        target_extract_collection = set(['/'.join(_reduced_normalize_url(urljoin(target_url, extract_url)).split('/')[:-1]) for extract_url in target_extract_function()])
+        url_extract_collection = set([_get_path_structure(_reduced_normalize_url(urljoin(url, extract_url))) for extract_url in url_extract_function()])
+        target_extract_collection = set([_get_path_structure(_reduced_normalize_url(urljoin(target_url, extract_url))) for extract_url in target_extract_function()])
     else:
         raise ExtractorError('invalid compare target %s for target_url: %s' % (compare_taret, target_url))
 
