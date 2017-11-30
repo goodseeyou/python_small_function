@@ -38,7 +38,11 @@ class ExtractorError(Exception): pass
 class ExtractorAnalyzeError(Exception): pass
 class Extractor(object):
     def __init__(self, page):
-        self.soup = BeautifulSoup(page, 'lxml')
+        if not page: page = ''
+        try:
+            self.soup = BeautifulSoup(page, 'lxml')
+        except Exception as e:
+            raise ExtractorError('Failed to initialize Extractor due to %s' % e)
         self.page = page.replace('\n', '').lower()
 
     def get_href_list(self):
