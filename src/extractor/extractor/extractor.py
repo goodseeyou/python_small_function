@@ -16,6 +16,7 @@ RE_SCRIPT = re.compile('<\s*script\s+[^>]*type\s*=\s*[\'"]text/javascript[\'"][^
 RE_IMG = re.compile('<\s*img\s+[^>]*src\s*=\s*[\'"][^\'"<>]+[\'"][^>]*?>')
 RE_INPUT_TAG_PASSWORD_TYPE = re.compile('<\s*input\s+[^>]*type\s*=\s*[\'"]password[\'"][^>]*>')
 RE_INPUT_TAG_TEXT_TYPE = re.compile('<\s*input\s+[^>]*type\s*=\s*[\'"]text[\'"][^>]*>')
+RE_INPUT_TAG_IMAGE_TYPE = re.compile('<\s*input\s+[^>]*type\s*=\s*[\'"]image[\'"][^>]*>')
 RE_INPUT_TAG_SUBMIT_TYPE = re.compile('<\s*input\s+[^>]*type\s*=\s*[\'"]submit[\'"][^>]*>')
 RE_SELECT_TAG = re.compile('<\s*select\s*[^>]+>')
 RE_OPTION_TAG = re.compile('<\s*option\s*[^>]+>')
@@ -58,6 +59,8 @@ class Extractor(object):
         return RE_INPUT_TAG_TEXT_TYPE.findall(self.page)
     def get_submit_input_list(self):
         return RE_INPUT_TAG_SUBMIT_TYPE.findall(self.page)
+    def get_image_input_list(self):
+        return RE_INPUT_TAG_IMAGE_TYPE.findall(self.page)
     def get_select_list(self):
         return RE_SELECT_TAG.findall(self.page)
     def get_option_list(self):
@@ -300,10 +303,11 @@ def is_potential_creditcard_form(extractor):
     return False
 
 
-def is_potential_email_form(extractor):
+def is_potential_login_form(extractor):
     len_submit_input = len(extractor.get_submit_input_list())
-    text_input_list = extractor.get_text_input_list()
-    if len(text_input_list) == 1 and len_submit_input == 1 and 'mail' in text_input_list[0]:
+    len_text_input = len(extractor.get_text_input_list())
+    len_image_input = len(extractor.get_image_input_list())
+    if len_text_input == 1 and (len_submit_input == 1 or len_image_input == 1):
         return True
 
     return False
