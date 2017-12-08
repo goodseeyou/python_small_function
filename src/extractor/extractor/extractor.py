@@ -192,7 +192,27 @@ def _reduced_normalize_url(url):
     query = tok.query
 
     return '%s%s?%s' % (domain, path, query)
-    
+
+def trim_www(_str):
+    previous = None
+    while previous != _str:
+        previous = _str
+        if _str.startswith('www.'):
+            _str = _str[4:]
+
+    return _str
+
+def is_reduced_equal(url, target, does_trim=False):
+    url = _reduced_normalize_url(url).strip()
+    target = _reduced_normalize_url(target).strip()
+
+    if does_trim:
+        url = url.split("?")[0].strip()
+        url = trim_www(url)
+        target = target.split("?")[0].strip()
+        target = trim_www(trim_www)
+
+    return url == target
 
 # Recognize only by URL
 def is_same_icon(url, target_url, url_extractor, target_extractor):
@@ -320,8 +340,10 @@ def is_potential_login_form(extractor):
 
 if __name__ == '__main__':
     import sys
+    #'''
     with open(sys.argv[1],'r') as data:
         extractor = Extractor(data.read())
+    #'''
     '''
     with open(sys.argv[2],'r') as data:
         t_ext = Extractor(data.read())
@@ -339,3 +361,4 @@ if __name__ == '__main__':
     #print is_potential_creditcard_form(extractor)
     #print extractor.get_meta_refresh_url_list()
     print extractor.get_a_href_list()
+
