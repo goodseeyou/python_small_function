@@ -126,7 +126,19 @@ class Extractor(object):
                 return True
     
         return False
+
+
+    def _is_cover_img(self, element):
+        if not element: return False
+
+        for child in element.findChildren():
+            if not child: continue
+
+            if child.name in ('img',):
+                return True
     
+        return False
+
 
     def text_from_html(self):
         texts = self.soup.findAll(text=True)
@@ -164,17 +176,28 @@ class Extractor(object):
         return redirect_url_list
 
 
+    def get_non_empty_attributes_str_list(self, elements, attribute_key):
+        return [e.attrs.get(attribute_key, '').strip() for e in elements if attribute_key in e.attrs and e.attrs.get(attribute_key, '').strip()]
+
+
     def get_a_href_list(self):
         a_tags = self.soup.findAll('a')
         visible_a_tags = filter(self._tag_visible, a_tags)
-        a_links = [a.attrs.get('href', '').strip() for a in visible_a_tags if 'href' in a.attrs and a.attrs.get('href', '').strip()]
+        a_links = self.get_non_empty_attributes_str_list(visible_a_tags, 'href')
         return a_links
+
+
+    def get_a_href_under_img_list(self):
+        a_tags = self.soup.findAll('a')
+        visible_a_tags = filter(self._tag_visible, a_tags)
+        a_links_including_img = filter(self._is_cover_img, visible_a_tags)
+        return self.get_non_empty_attributes_str_list(a_links_including_img, 'href')
 
 
     def get_form_action_list(self):
         form_tags = self.soup.findAll('form')
         visible_form_tags = filter(self._tag_visible, form_tags)
-        action_urls = [form.attrs.get('action', '').strip() for form in visible_form_tags if 'action' in form.attrs and form.attrs.get('action', '').strip()]
+        action_urls = self.get_non_empty_attributes_str_list(visible_form_tags, 'action')
         return action_urls
     
 
@@ -342,7 +365,7 @@ def is_single_signin_form(extractor):
         return True
 
     return False
-    
+
 
 if __name__ == '__main__':
     import sys
@@ -363,9 +386,10 @@ if __name__ == '__main__':
     #print extractor.get_script_src_list()
     #print extractor.get_img_src_list()
     #print extractor.get_password_input_list()
-    #print extractor.get_limited_visible_text_list()
+    print extractor.get_limited_visible_text_list()
     #print is_potential_creditcard_form(extractor)
     #print extractor.get_meta_refresh_url_list()
-    print extractor.get_a_href_list()
-    print extractor.get_form_action_list()
+    #print extractor.get_a_href_list()
+    #print extractor.get_form_action_list()
+    #print extractor.get_a_href_under_img_list()
 
