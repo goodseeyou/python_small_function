@@ -169,6 +169,13 @@ class Extractor(object):
         visible_a_tags = filter(self._tag_visible, a_tags)
         a_links = [a.attrs.get('href', '').strip() for a in visible_a_tags if 'href' in a.attrs and a.attrs.get('href', '').strip()]
         return a_links
+
+
+    def get_form_action_list(self):
+        form_tags = self.soup.findAll('form')
+        visible_form_tags = filter(self._tag_visible, form_tags)
+        action_urls = [form.attrs.get('action', '').strip() for form in visible_form_tags if 'action' in form.attrs and form.attrs.get('action', '').strip()]
+        return action_urls
     
 
 def _get_path_structure(reduced_normalize_url):
@@ -327,7 +334,7 @@ def is_potential_creditcard_form(extractor):
     return False
 
 
-def is_potential_login_form(extractor):
+def is_single_signin_form(extractor):
     len_submit_input = len(extractor.get_submit_input_list())
     len_text_input = len(extractor.get_text_input_list())
     len_image_input = len(extractor.get_image_input_list())
@@ -335,8 +342,7 @@ def is_potential_login_form(extractor):
         return True
 
     return False
-
-
+    
 
 if __name__ == '__main__':
     import sys
@@ -361,4 +367,5 @@ if __name__ == '__main__':
     #print is_potential_creditcard_form(extractor)
     #print extractor.get_meta_refresh_url_list()
     print extractor.get_a_href_list()
+    print extractor.get_form_action_list()
 
