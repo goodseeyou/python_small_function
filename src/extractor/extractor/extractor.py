@@ -210,7 +210,7 @@ def is_reduced_equal(url, target, does_trim=False):
         url = url.split("?")[0].strip()
         url = trim_www(url)
         target = target.split("?")[0].strip()
-        target = trim_www(trim_www)
+        target = trim_www(target)
 
     return url == target
 
