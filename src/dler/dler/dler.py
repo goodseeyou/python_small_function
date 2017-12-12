@@ -52,6 +52,14 @@ class Dler(object):
 
     def set_extractor(self, extractor):
         self.extractor = extractor
+
+    def clean(self):
+        self.condition = threading.Condition()
+        self.event = threading.Event()
+        self.thread_pool = {}
+        self.cache = {}
+        self.header_cache = {}
+        self.meta_cache = {}
         
     def download(self, url_iterable, does_content_redirect=False, timeout_seconds=30, header_only=False):
         begin_time = time.time()
@@ -75,7 +83,7 @@ class Dler(object):
                 self._parallel_download(url_set, _len_thread_pool, _len_url_set, user_agent_num, does_content_redirect, header_only)
 
             ''' TODO check if this sleep is better to keep '''
-            time.sleep(0.1) 
+            time.sleep(0.05) 
 
         return self
 
