@@ -366,6 +366,21 @@ def is_single_signin_form(extractor):
 
     return False
 
+# data source: http://data.iana.org/TLD/tlds-alpha-by-domain.txt
+def parse_top_level_domain(file_path):
+    tld_list = []
+    try:
+        with open (file_path, 'r') as data:
+            for line in data:
+                line = line.strip().lower()
+                if not line: continue
+                if line.startswith('#'): continue
+                tld_list.append(line)
+    except IOError as e:
+        raise ExtractorError('Failed to read file of top level domain list. %s' % e)
+
+    return tld_list
+
 
 if __name__ == '__main__':
     import sys
