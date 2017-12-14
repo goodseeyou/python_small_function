@@ -5,6 +5,7 @@ from StringIO import StringIO
 import random
 from urlparse import urljoin
 import re
+import hashlib
 
 
 CURL_OPT_MAX_NUM_REDIRECT = 12
@@ -60,6 +61,37 @@ class Dler(object):
         self.cache = {}
         self.header_cache = {}
         self.meta_cache = {}
+
+
+    def get_archive_data(self, url):
+        cache_map = {}
+        content_sha1_map = {}
+        header_map = {}
+        header_sha1_map = {}
+        meta_map = {}
+        meta_sha1_map = {}
+
+        # divide content to store
+        url_cache = self.cache.get(url, {})
+        for redirect_url in url_cache:
+            content_str = url_cache[redirect_url]
+            content_sha1 = hashlib.sha1(content_str).hexdigest()
+            cache_map[redirect_url] = content_sha1
+            content_sha1_map[sha1] = content_str
+
+        header_cache = self.header_cache.get(url, {})
+        for redirect_url in header_cache:
+            header_json = json.dumps(header_cache[redirect_url])
+            header_sha1 = hashlib.sha1(header_json).hexdigest()
+            header_map[redirect_url] = header_sha1
+            header_sha1_map[sha1] = header_json
+
+        meta_json = json.dumps(self.meta_cache.get(url, {}))
+        meta_sha1 = hashlib.sha1(meta_json)
+        meta_map[url] = meta_sha1
+        meta_sha1_map[meta_sha1] = meta_json
+
+        return cache_map, content_sha1_map, header_map, header_sha1_map, meta_map, meta_sha1_map
         
     def download(self, url_iterable, does_content_redirect=False, timeout_seconds=30, header_only=False):
         begin_time = time.time()
@@ -96,6 +128,48 @@ class Dler(object):
             self.meta_cache[url] = {}
             self.thread_pool[url] = DlerThread(url, self.condition, self.event, self.thread_pool, self.cache[url], self.header_cache[url], self.meta_cache[url], user_agent_num, does_content_redirect, extractor=self.extractor, header_only=header_only)
             self.thread_pool[url].start()
+
+''' Cache structure
+cache (content cache): cache[input_url][each_redirect_url] = str(page content)
+header_cache: header_cache[input_url][each_redirect_url] = dict(response header)
+meta_cache: meta_cache[input_url] = dict(meta data)
+'''
+class DlerCacheError(DlerError):pass
+class DlerCache(object):
+    def __init__(self):
+        # key: url
+        # value: downloaded content
+        self.content_cache = {}
+        # key: url
+        # value: header from response
+        self.header_cache = {}
+        # key: url
+        # value: defined meta data of URL
+        self.meta_cache = {}
+
+    @valid_dict
+    def set_content_cache(_dict):
+        self.content_cache = _dict
+
+    @valid_dict
+    def set_header_cache(_dict):
+        self.header_cache = _dict
+        
+    @valid_dict
+    def set_meta_cache(_dict):
+        self.meta_cache = _dict
+
+
+def valid_dict(func):
+    def funciton_with_dict_input(*args, **kwargs):
+        for arg in args:
+            if not isinstance(arg, dict):
+                raise DlerCacheError('The input %s should be a dict but is %s.' % (arg, type(arg)))
+        for k in kwargs:
+            if not isinstance(kwargs[k], dict):
+                raise DlerCacheError('The input %s should be a dict but is %s.' % (k, type(arg)))
+        return func(*args, **kwargs)
+    return funciton_with_dict_input
 
 
 class DlerThreadError(Exception): pass
