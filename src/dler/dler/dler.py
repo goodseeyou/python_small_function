@@ -222,7 +222,10 @@ class DlerCache(object):
             return self.get_content(url)
 
     def get_final_url(self, url):
-        return self.meta_cache.get(url, {}).get(KEY_META_REDIRECT_PATH, [])[-1]
+        try:
+            return self.meta_cache.get(url, {}).get(KEY_META_REDIRECT_PATH, [])[-1]
+        except IndexError as e:
+            return url
 
     @init_meta_cache
     def set_redirect_url_list(self, url, redirect_url_list):
