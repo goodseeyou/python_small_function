@@ -18,9 +18,10 @@ CURL_OPT_USER_AGENT_LIST = [ 'Mozilla/5.0 (Windows NT 5.1) AppleWebKit/537.36 (K
 LEN_USER_AGENT_LIST = len(CURL_OPT_USER_AGENT_LIST)
 KEY_CURL_HEADER_RESPONSE = '_response'
 KEY_CURL_HEADER_LOCATION = 'location'
-KEY_META_REDIRECT_PATH = 'redirect_url'
+
+KEY_META_REDIRECT_PATH = 'redirect_url_list'
 KEY_META_IS_REDIRECT_COMPLETE = 'is_redirect_complete'
-KEY_META_SUCCESSFULLY_DOWNLOAD = 'successfully_download'
+KEY_META_FINISH_DOWNLOAD = 'finish_download'
 KEY_META_FAILED_DOWNLOAD_REASON = 'failed_download_reason'
 KEY_META_CONTENT_LENGTH = 'final_url_content_length'
 KEY_META_HTTP_CODE = 'http_code'
@@ -46,9 +47,12 @@ class Dler(object):
         self.thread_pool = {}
         self.condition = threading.Condition()
         self.event = threading.Event()
-        self.cache = {} if cache is None else cache
-        self.header_cache = {} if header_cache is None else header_cache
-        self.meta_cache = {} if meta_cache is None else meta_cache
+
+        cache = {} if cache is None else cache
+        header_cache = {} if header_cache is None else header_cache
+        meta_cache = {} if meta_cache is None else meta_cache
+        self.dler_cache = DlerCache(cache, header_cache, meta_cache)
+
         self.extractor = extractor if extractor else None
 
     def set_extractor(self, extractor):
@@ -62,6 +66,16 @@ class Dler(object):
         self.header_cache = {}
         self.meta_cache = {}
 
+    def close_curl_model(self, url=None):
+        if url:
+            dler_thread = self.thread_pool.get(url, None)
+            if dler_thread:
+                dler_thread.close_curl_model()
+
+        else:
+            for url in self.thread_pool:
+                dler_thread = self.thread_pool[url]
+                dler_thread.close_curl_model()
 
     def get_archive_data(self, url):
         cache_map = {}
@@ -105,7 +119,8 @@ class Dler(object):
 
         while len(self.thread_pool) != 0 or len(url_set) != 0 :
             round_time = time.time()
-            if abs(round_time - begin_time) > int(timeout_seconds) :
+            if abs(round_time - begin_time) > int(timeout_seconds):
+                self.close_curl_model()
                 raise DlerError('Get timeout when downloading')
 
             _len_thread_pool = len(self.thread_pool)
@@ -123,62 +138,159 @@ class Dler(object):
         quota = self.max_thread - len_thread_pool
         for i in xrange(min(quota, len_url_set)):
             url = url_set.pop()
-            self.cache[url] = {}
-            self.header_cache[url] = {}
-            self.meta_cache[url] = {}
-            self.thread_pool[url] = DlerThread(url, self.condition, self.event, self.thread_pool, self.cache[url], self.header_cache[url], self.meta_cache[url], user_agent_num, does_content_redirect, extractor=self.extractor, header_only=header_only)
+            self.thread_pool[url] = DlerThread(url, self.condition, self.event, self.thread_pool, self.dler_cache, user_agent_num, does_content_redirect, extractor=self.extractor, header_only=header_only)
             self.thread_pool[url].start()
-
-''' Cache structure
-cache (content cache): cache[input_url][each_redirect_url] = str(page content)
-header_cache: header_cache[input_url][each_redirect_url] = dict(response header)
-meta_cache: meta_cache[input_url] = dict(meta data)
-'''
-class DlerCacheError(DlerError):pass
-class DlerCache(object):
-    def __init__(self):
-        # key: url
-        # value: downloaded content
-        self.content_cache = {}
-        # key: url
-        # value: header from response
-        self.header_cache = {}
-        # key: url
-        # value: defined meta data of URL
-        self.meta_cache = {}
-
-    @valid_dict
-    def set_content_cache(_dict):
-        self.content_cache = _dict
-
-    @valid_dict
-    def set_header_cache(_dict):
-        self.header_cache = _dict
-        
-    @valid_dict
-    def set_meta_cache(_dict):
-        self.meta_cache = _dict
 
 
 def valid_dict(func):
     def funciton_with_dict_input(*args, **kwargs):
-        for arg in args:
+        for arg in args[1:]:
             if not isinstance(arg, dict):
                 raise DlerCacheError('The input %s should be a dict but is %s.' % (arg, type(arg)))
+
         for k in kwargs:
             if not isinstance(kwargs[k], dict):
                 raise DlerCacheError('The input %s should be a dict but is %s.' % (k, type(arg)))
+
         return func(*args, **kwargs)
+
     return funciton_with_dict_input
 
+def init_meta_cache(func):
+    def checked_meta_cache_function(*args, **kwargs):
+        try:
+            self = args[0]
+            url = args[1]
+        except KeyError as e:
+            raise DlerCacheError('get key error: %s' % e)
 
-class DlerThreadError(Exception): pass
+        if url not in self.meta_cache:
+            self.meta_cache[url] = {}
+
+        return func(*args, **kwargs)
+
+    return checked_meta_cache_function
+
+class DlerCacheError(DlerError):pass
+class DlerCache(object):
+    def __init__(self, content_cache=None, header_cache=None, meta_cache=None):
+        # key: url
+        # value: downloaded content
+        self.content_cache = content_cache if content_cache else {}
+        # key: url
+        # value: header from response
+        self.header_cache = header_cache if header_cache else {}
+        # key: url
+        # value: defined meta data of URL
+        self.meta_cache = meta_cache if meta_cache else {}
+
+    #@valid_dict
+    def set_content_cache(self, _dict):
+        self.content_cache = _dict
+
+    #@valid_dict
+    def set_header_cache(self, _dict):
+        self.header_cache = _dict
+
+    #@valid_dict
+    def set_meta_cache(self, _dict):
+        self.meta_cache = _dict
+
+    def set_header_dict(self, url, header):
+        if not isinstance(url, str):
+            raise DlerCacheError('url should be a str but input is %s' % (type(url)))
+
+        if not isinstance(header, dict):
+            raise DlerCacheError('header should be a dict but input is %s' % (type(header)))
+
+        self.header_cache[url] = header
+
+    def get_header_dict(self, url):
+        return self.header_cache.get(url, {})
+
+    def set_content(self, url, content):
+        self.content_cache[url] = content
+
+    def get_content(self, url):
+        return self.content_cache.get(url, None)
+
+    def get_final_content(self, url):
+        final_url = self.get_final_url(url)
+        if final_url:
+            return self.get_content(final_url)
+        else:
+            return None
+
+    def get_final_url(self, url):
+        return self.meta_cache.get(url, {}).get(KEY_META_REDIRECT_PATH, [])[-1]
+
+    @init_meta_cache
+    def set_redirect_url_list(self, url, redirect_url_list):
+        if not isinstance(redirect_url_list, list):
+            raise DlerCacheError('redirect_url_list should be a list but %s' % type(redirect_url_list))
+
+        self.meta_cache[url][KEY_META_REDIRECT_PATH] = redirect_url_list
+
+    def get_redirect_url_list(self, url):
+        return self.meta_cache.get(url, {}).get(KEY_META_REDIRECT_PATH, None)
+
+    @init_meta_cache
+    def set_is_redirect_completed(self, url, is_compeleted):
+        is_compeleted_boolean = True if is_compeleted else False
+        self.meta_cache[url][KEY_META_IS_REDIRECT_COMPLETE] = is_compeleted_boolean
+
+    def is_redirect_completed(self, url):
+        return self.meta_cache.get(url, {}).get(KEY_META_IS_REDIRECT_COMPLETE, None)
+
+    @init_meta_cache
+    def set_is_download_finish(self, url, is_finish):
+        is_finish_boolean = True if is_finish else False
+        self.meta_cache[url][KEY_META_FINISH_DOWNLOAD] = is_finish_boolean
+
+    def is_download_finish(self, url):
+        return self.meta_cache.get(url, {}).get(KEY_META_FINISH_DOWNLOAD, None)
+
+    @init_meta_cache
+    def set_failed_download_reason(self, url, reason):
+        self.meta_cache[url][KEY_META_FAILED_DOWNLOAD_REASON] = reason
+
+    def get_failed_download_reason(self, url):
+        self.meta_cache.get(url, {}).get(KEY_META_FAILED_DOWNLOAD_REASON, '')
+
+    @init_meta_cache
+    def set_content_length(self, url, content_length):
+        try:
+            content_length = int(content_length)
+        except (ValueError, TypeError) as e:
+            raise DlerCacheError('Invalid content length type. %s'%e)
+
+        self.meta_cache[url][KEY_META_CONTENT_LENGTH] = content_length
+
+    def get_content_length(self, url):
+        return self.meta_cache.get(url, {}).get(KEY_META_CONTENT_LENGTH, -1)
+
+    @init_meta_cache
+    def set_final_http_code(self, url, http_code):
+        try:
+            http_code = int(http_code)
+        except (ValueError, TypeError) as e:
+            raise DlerCacheError('Invalid http code type. %s'%e)
+
+        self.meta_cache[url][KEY_META_HTTP_CODE] = http_code
+
+    def get_final_http_code(self, url):
+        return meta_cache.get(url, {}).get(KEY_META_HTTP_CODE, -1)
+
+
+
+
+class DlerThreadError(DlerError): pass
 class DlerThread(threading.Thread):
-    def __init__(self, url, condition, event, thread_pool, content_dict, header_dict, meta_dict, user_agent_num, does_content_redirect, max_redirect = None, extractor = None, header_only=False):
+    def __init__(self, url, condition, event, thread_pool, dler_cache, user_agent_num, does_content_redirect, max_redirect = None, extractor = None, header_only=False):
         threading.Thread.__init__(self)
-        self.content_dict = content_dict
-        self.header_dict = header_dict
-        self.meta_dict = meta_dict
+        if not isinstance(dler_cache, DlerCache):
+            raise DlerThreadError('dler_cache should be instance of DlerCache but %s'%type(dler_cache))
+        self.dler_cache = dler_cache
         self.url = url
         self.url_chain = [url]
         self.con = condition
@@ -191,28 +303,43 @@ class DlerThread(threading.Thread):
         self.header_only = header_only
         ''' TODO accept langauge will be used to target regional, e.g. only open for zh-cn and block if there is ja-jp '''
         self.custom_header = ['Accept-Language:zh-tw,zh-cn,zh-hk,zh-mo,en-us,en-gb,en-ca,fr-fr,de-de,it-it,ja-jp,ru-ru,es-es,pt-br,es-mx,bn-in,da-dk']
+        self.curl_model_list = []
+
+    def close_curl_model(self):
+        for c in self.curl_model_list:
+            try:
+                c.close()
+            except:
+                pass
 
     def run(self):
         try:
             self.download_url()
             self.thread_pool.pop(self.url, None)
         except Exception as e:
-            self.meta_dict[KEY_META_SUCCESSFULLY_DOWNLOAD] = False
-            self.meta_dict[KEY_META_FAILED_DOWNLOAD_REASON] = '%s:%s' % (e.__class__.__name__, str(e))
+        #except ValueError as e:
+            self.dler_cache.set_is_download_finish(self.url, False)
+            failed_reason = '%s:%s' % (e.__class__.__name__, str(e))
+            self.dler_cache.set_failed_download_reason(self.url, failed_reason)
+            self.close_curl_model()
             self.thread_pool.pop(self.url, None)
 
     def download_url(self):
-        download_chain = [self.url]
+        to_be_download_list = [self.url]
         redirected_num = 0
 
-        while(len(download_chain) != 0):
+        while(len(to_be_download_list) != 0):
             do_redirect = False
 
-            url = download_chain.pop(0)
-            self.content_dict[url], self.header_dict[url], http_code = self._curl(url, self.user_agent_num)
+            url = to_be_download_list.pop(0)
+            content, header_dict, http_code = self._curl(url, self.user_agent_num)
+            self.dler_cache.set_content(url, content)
+            self.dler_cache.set_header_dict(url, header_dict)
+            # use the begining url as key for meta information
+            self.dler_cache.set_final_http_code(self.url, http_code)
 
-            if KEY_CURL_HEADER_LOCATION in self.header_dict[url] and http_code >= 300 and http_code < 400:
-                next_url = urljoin(url, self.header_dict[url][KEY_CURL_HEADER_LOCATION])
+            if KEY_CURL_HEADER_LOCATION in header_dict and http_code >= 300 and http_code < 400:
+                next_url = urljoin(url, header_dict[KEY_CURL_HEADER_LOCATION])
                 if not next_url or url == next_url: continue
                 do_redirect = True
 
@@ -222,39 +349,40 @@ class DlerThread(threading.Thread):
             Lower the content for regular expression match, but it might wrongly update URL and cause 404
             ''' 
             if not do_redirect and self.does_content_redirect:
-                url_set = self.find_redirect(self.content_dict[url])
+                url_set = self.find_redirect(content)
                 len_url_set = len(url_set)
 
                 if len_url_set == 1: 
                     next_url = urljoin(url, url_set.pop())
                     do_redirect = True
+
                 elif len_url_set > 1:
                     raise DlerThreadError('Get more than 1 URL to redirect from content parsing')
 
             if do_redirect:
-                download_chain.append(next_url)
+                to_be_download_list.append(next_url)
                 self.url_chain.append(next_url)
                 redirected_num += 1
 
                 if redirected_num >= self.max_redirect:
-                    self.meta_dict[KEY_META_IS_REDIRECT_COMPLETE] = False
+                    self.dler_cache.set_is_download_finish(self.url, False)
+                    self.dler_cache.set_is_redirect_completed(self.url, False)
                     break
+            elif not to_be_download_list:
+                self.dler_cache.set_is_redirect_completed(self.url, True)
 
-        self.meta_dict[KEY_META_IS_REDIRECT_COMPLETE] = self.meta_dict.get(KEY_META_IS_REDIRECT_COMPLETE, True)
-        self.meta_dict[KEY_META_REDIRECT_PATH] = self.url_chain
-        self.meta_dict[KEY_META_CONTENT_LENGTH] = len(self.content_dict[self.url_chain[-1]]) if self.url_chain[-1] in self.content_dict else -1
 
-    def _compose_url_from_location(self, url, location_url):
-        if location_url.startswith('http'):
-            return location_url
-
-        url_tok = urlparse(url)
-        return '%s://%s%s'%(url_tok.scheme, url_tok.netloc, location_url)
+        self.dler_cache.set_redirect_url_list(self.url, self.url_chain)
+    
+        final_content = self.dler_cache.get_final_content(self.url)
+        len_final_content = len(final_content) if final_content is not None else -1
+        self.dler_cache.set_content_length(self.url, len_final_content)
 
     def _curl(self, url, user_agent_num=0):
         string_buffer = StringIO()
         header_buffer = list()
         c = pycurl.Curl()
+        self.curl_model_list.append(c)
         c.setopt(c.URL, url)
         c.setopt(c.HTTPHEADER, self.custom_header)
         if self.header_only:
@@ -266,16 +394,21 @@ class DlerThread(threading.Thread):
         c.setopt(c.MAXREDIRS, CURL_OPT_MAX_NUM_REDIRECT)
         c.setopt(c.HEADERFUNCTION, header_buffer.append)
         c.setopt(c.SSL_VERIFYPEER, 0)
+
         try:
             c.perform()
+
         except Exception as e:
-            self.meta_dict[KEY_META_SUCCESSFULLY_DOWNLOAD] = False
-            self.meta_dict[KEY_META_FAILED_DOWNLOAD_REASON] = '%s:%s' % (e.__class__.__name__, str(e))
+            self.dler_cache.set_is_download_finish(self.url, False)
+
+            failed_reason = '%s:%s' % (e.__class__.__name__, str(e))
+            self.dler_cache.set_failed_download_reason(self.url, failed_reason)
+
             raise DlerThreadError(e)
 
         http_code = int(c.getinfo(c.HTTP_CODE))
-        self.meta_dict[KEY_META_HTTP_CODE] = http_code
-        self.meta_dict[KEY_META_SUCCESSFULLY_DOWNLOAD] = True
+        self.dler_cache.set_final_http_code(self.url, http_code)
+        self.dler_cache.set_is_download_finish(self.url, True)
 
         c.close()
 
@@ -296,7 +429,6 @@ class DlerThread(threading.Thread):
             _tmp[name] = value
 
         return _tmp
-
 
     def find_redirect(self, page):
         lower_page = page.lower()
@@ -347,8 +479,10 @@ if __name__ == '__main__':
     sys.path.append('/Users/paul_lin/python_small_function/src/extractor/extractor/')
     import extractor
     dler.set_extractor(extractor)
-    dler.download([sys.argv[1]], True, header_only=True)
+    dler.download([sys.argv[1]], True, header_only=False)
     #dler.download([sys.argv[1]], True, header_only=False)
-    print dler.header_cache
+    #print dler.dler_cache.get_final_content(sys.argv[1])
+    print dler.dler_cache.content_cache
+    print dler.dler_cache.header_cache
     print ''
-    print dler.meta_cache
+    print dler.dler_cache.meta_cache
