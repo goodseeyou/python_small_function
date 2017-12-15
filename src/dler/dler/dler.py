@@ -219,7 +219,7 @@ class DlerCache(object):
         if final_url:
             return self.get_content(final_url)
         else:
-            return None
+            return self.get_content(url)
 
     def get_final_url(self, url):
         return self.meta_cache.get(url, {}).get(KEY_META_REDIRECT_PATH, [])[-1]
@@ -279,7 +279,7 @@ class DlerCache(object):
         self.meta_cache[url][KEY_META_HTTP_CODE] = http_code
 
     def get_final_http_code(self, url):
-        return meta_cache.get(url, {}).get(KEY_META_HTTP_CODE, -1)
+        return self.meta_cache.get(url, {}).get(KEY_META_HTTP_CODE, -1)
 
 
 
