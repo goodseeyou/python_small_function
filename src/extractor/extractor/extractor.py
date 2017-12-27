@@ -55,8 +55,9 @@ class Extractor(object):
         return self._get_href_from_tag(RE_STYLESHEET.findall(self.page))
     def get_script_src_list(self):
         return self._get_src_from_tag(RE_SCRIPT.findall(self.page))
-    def get_img_src_list(self):
-        return self._get_src_from_tag(RE_IMG.findall(self.page))
+    # @depreciated
+    #def get_img_src_list(self):
+    #    return self._get_src_from_tag(RE_IMG.findall(self.page))
     def get_password_input_list(self):
         return RE_INPUT_TAG_PASSWORD_TYPE.findall(self.page)
     def get_text_input_list(self):
@@ -144,7 +145,7 @@ class Extractor(object):
         texts = self.soup.findAll(text=True)
         visible_texts = filter(self._tag_visible, texts)  
 
-        return u" ".join(t.strip() for t in visible_texts if t.strip() and t)
+        return [t.strip() for t in visible_texts if t.strip() and t]
 
 
     def _meta_refresh(self, element):
@@ -199,11 +200,29 @@ class Extractor(object):
         visible_form_tags = filter(self._tag_visible, form_tags)
         action_urls = self.get_non_empty_attributes_str_list(visible_form_tags, 'action')
         return action_urls
+
+
+    def get_img_src_list(self, is_visible=False):
+        img_tags = self.soup.findAll('img')
+        if is_visible:
+            img_tags = filter(self._tag_visible, img_tags)
+        img_src_list = self.get_non_empty_attributes_str_list(img_tags, 'src')
+        return img_src_list
     
 
 def _get_path_structure(reduced_normalize_url):
     url = reduced_normalize_url
     return '/%s' % '/'.join(url.split('?')[0].split('/')[1:-1] + [''])
+
+
+def get_path_level_len(url):
+    tok = urlparse(url)
+    path = tok.path.strip()
+    path_tok = [tok.strip() for tok in path.split('/') if tok.strip()]
+    len_path_level = len(path_tok)
+    if not path.endswith('/'):
+        len_path_level += -0.5
+    return len_path_level
     
 
 def _reduced_normalize_url(url):
@@ -401,10 +420,12 @@ if __name__ == '__main__':
     #print extractor.get_script_src_list()
     #print extractor.get_img_src_list()
     #print extractor.get_password_input_list()
-    print extractor.get_limited_visible_text_list()
+    #print extractor.get_limited_visible_text_list()
     #print is_potential_creditcard_form(extractor)
     #print extractor.get_meta_refresh_url_list()
     #print extractor.get_a_href_list()
     #print extractor.get_form_action_list()
     #print extractor.get_a_href_under_img_list()
+    print extractor.get_img_src_list()
+
 
