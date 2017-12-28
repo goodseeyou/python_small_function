@@ -9,9 +9,9 @@ import hashlib
 
 
 CURL_OPT_MAX_NUM_REDIRECT = 12
-CURL_OPT_USER_AGENT_LIST = [ 'Mozilla/5.0 (Windows NT 5.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2224.3 Safari/537.36', # Windows XP Chrome
-                             'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2228.0 Safari/537.36', # Windows 7 Chrome
-                             'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/41.0.2227.1 Safari/537.36', # OSX Chrome
+CURL_OPT_USER_AGENT_LIST = [ 'Mozilla/5.0 (Windows NT 5.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.2224.3 Safari/537.36', # Windows XP Chrome
+                             'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.2228.0 Safari/537.36', # Windows 7 Chrome
+                             'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.2227.1 Safari/537.36', # OSX Chrome
                              'Mozilla/4.0 (Compatible; MSIE 8.0; Windows NT 5.2; Trident/6.0)', # Windows Server 2003 IE 10
                              'Mozilla/5.0 (compatible; MSIE 8.0; Windows NT 5.1; Trident/4.0; SLCC1; .NET CLR 3.0.4506.2152; .NET CLR 3.5.30729; .NET CLR 1.1.4322)' # Windows XP IE 8
                              ]
@@ -42,11 +42,14 @@ meta_cache: meta_cache[input_url] = dict(meta data)
 '''
 class DlerError(Exception): pass
 class Dler(object):
-    def __init__(self, max_thread = 10, cache = None, header_cache = None, meta_cache = None, extractor = None):
-        self.max_thread = max_thread
-        self.thread_pool = {}
-        self.condition = threading.Condition()
-        self.event = threading.Event()
+    def __init__(self, max_connection = 10, cache = None, header_cache = None, meta_cache = None, extractor = None):
+        try:
+            self.max_connection = int(max_connection)
+        except ValueError as e:
+            raise DlerError('invalid value of max_connection', e)
+
+        if self.max_connection <= 0:
+            raise DlerError('max_connection should be at least 1')
 
         cache = {} if cache is None else cache
         header_cache = {} if header_cache is None else header_cache
@@ -55,27 +58,20 @@ class Dler(object):
 
         self.extractor = extractor if extractor else None
 
+        try:
+            import signal
+            from signal import SIGPIPE, SIG_IGN
+        except ImportError:
+            pass
+        else:
+            signal.signal(SIGPIPE, SIG_IGN)
+
     def set_extractor(self, extractor):
         self.extractor = extractor
 
     def clean(self):
-        self.condition = threading.Condition()
-        self.event = threading.Event()
-        self.thread_pool = {}
-        self.cache = {}
-        self.header_cache = {}
-        self.meta_cache = {}
-
-    def close_curl_model(self, url=None):
-        if url:
-            dler_thread = self.thread_pool.get(url, None)
-            if dler_thread:
-                dler_thread.close_curl_model()
-
-        else:
-            for url in self.thread_pool:
-                dler_thread = self.thread_pool[url]
-                dler_thread.close_curl_model()
+        # TODO
+        self.dler_cache = DlerCache()
 
     def get_archive_data(self, url):
         cache_map = {}
@@ -107,35 +103,105 @@ class Dler(object):
 
         return cache_map, content_sha1_map, header_map, header_sha1_map, meta_map, meta_sha1_map
         
-    def download(self, url_iterable, does_content_redirect=False, timeout_seconds=30, header_only=False):
+
+    def download(self, url_iterable, does_content_redirect=False, timeout_seconds=10, header_only=False):
         begin_time = time.time()
         try:
             url_iterator = iter(url_iterable)
         except TypeError as e:
             raise DlerError(e)
 
-        url_set = set(url_iterator)
+        url_list_to_download = list(set(url_iterator))
+        len_url_list_to_download = len(url_list_to_download)
         user_agent_num = random.randint(0, LEN_USER_AGENT_LIST-1)
 
-        while len(self.thread_pool) != 0 or len(url_set) != 0 :
-            round_time = time.time()
-            if abs(round_time - begin_time) > int(timeout_seconds):
-                self.close_curl_model()
-                raise DlerError('Get timeout when downloading')
+        multi_curl = self._get_prepared_multi_curl(len_url_list_to_download, timeout_seconds)
 
-            _len_thread_pool = len(self.thread_pool)
-            _len_url_set = len(url_set)
+        freelist = multi_curl.handles[:]
+        url_string_buffer_dict = {}
+        url_header_buffer_dict = {}
 
-            if _len_thread_pool < self.max_thread and _len_url_set > 0:
-                self._parallel_download(url_set, _len_thread_pool, _len_url_set, user_agent_num, does_content_redirect, header_only)
+        while url_list:
+            while freelist and url_list:
+                url = url_list.pop()
+                c = freelist.pop()
 
-            ''' TODO check if this sleep is better to keep '''
-            time.sleep(0.05) 
+                string_buffer = StringIO()
+                header_buffer = list()
+                url_string_buffer_dict[url] = string_buffer
+                url_header_buffer_dict[url] = header_buffer
 
-        return self
+                self._set_url_curl_module(url, c, string_buffer, header_buffer, header_only)
+
+            while True:
+                ret, num_handles = m.perform()
+                if ret != pycurl.E_CALL_MULTI_PERFORM:
+                    break
+
+            while True:
+                num_q, ok_list, err_list = m.info_read()
+
+                #TODO
+                for c in ok_list:
+                    m.remove_handle(c)
+                    url = c.url
+                    final_url = c.getinfo(pycurl.EFFECTIVE_URL)
+                    freelist.append(c)
+
+                for c, errno, errmsg in err_list:
+                    m.remove_handle(c)
+                    url = c.url
+                    freelist.append(c)
+
+                
+
+                if num_q <= 0:
+                    break
+
+
+    def _set_url_curl_module(self, url, curl_module, string_buffer, header_buffer, header_only):
+        curl_module.setopt(c.URL, url)
+        if self.header_only:
+            curl_module.setopt(c.NOBODY, 1)
+        else:
+            curl_module.setopt(c.WRITEFUNCTION, string_buffer.write)
+        curl_module.setopt(c.HEADERFUNCTION, header_buffer.append)
+
+        return curl_module
+        
+
+    def _get_prepared_multi_curl(self, len_url_list, timeout):
+        num_connection = min(len_url_list, self.max_connection)
+        multi_curl = pycurl.CurlMulti()
+        multi_curl.handles = []
+
+        if num_connection <= 0:
+            return multi_curl
+
+        user_agent_num = random.randint(0, LEN_USER_AGENT_LIST-1)
+        user_agent_string = CURL_OPT_USER_AGENT_LIST[user_agent_num]
+
+        for i in xrange(num_connection):
+            curl_module = self._get_prepared_curl_module(timeout, user_agent_string)
+            multi_curl.handles.append(curl_module)
+
+        return multi_curl
+
+
+    def _get_prepared_curl_module(self, timeout, user_agent_string):
+        c = pycurl.Curl()
+        c.setopt(c.HTTPHEADER, self.custom_header)
+        c.setopt(c.FOLLOWLOCATION, True)
+        c.setopt(c.USERAGENT, user_agent_string)
+        c.setopt(c.MAXREDIRS, CURL_OPT_MAX_NUM_REDIRECT)
+        c.setopt(c.SSL_VERIFYPEER, 0)
+        c.setopt(c.TIMEOUT, timeout)
+
+        return c
+
 
     def _parallel_download(self, url_set, len_thread_pool, len_url_set, user_agent_num, does_content_redirect, header_only):
-        quota = self.max_thread - len_thread_pool
+        quota = self.max_connection - len_thread_pool
         for i in xrange(min(quota, len_url_set)):
             url = url_set.pop()
             self.thread_pool[url] = DlerThread(url, self.condition, self.event, self.thread_pool, self.dler_cache, user_agent_num, does_content_redirect, extractor=self.extractor, header_only=header_only)
@@ -385,7 +451,6 @@ class DlerThread(threading.Thread):
         string_buffer = StringIO()
         header_buffer = list()
         c = pycurl.Curl()
-        self.curl_model_list.append(c)
         c.setopt(c.URL, url)
         c.setopt(c.HTTPHEADER, self.custom_header)
         if self.header_only:
