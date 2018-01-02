@@ -120,7 +120,7 @@ class Dler(object):
         #url_tuple_to_download = list(tuple(root_url, url))
         url_tuple_to_download = []
         for url in list(set(url_iterator)):
-            url_to_download.append((url, url))
+            url_tuple_to_download.append((url, url))
             redirect_list_dict[url] = [url]
 
         num_url_to_download = len(url_tuple_to_download)
@@ -160,6 +160,7 @@ class Dler(object):
 
                 for c in ok_list:
                     multi_curl.remove_handle(c)
+                    url = c.url
                     root_url = url_map_root_url_dict[url]
                     redirect_url = self.get_redirect_url(url, url_string_buffer_dict, redirect_list_dict[root_url])
 
@@ -170,10 +171,10 @@ class Dler(object):
                     self._update_ok_url(root_url, c, url_string_buffer_dict, url_header_buffer_dict, redirect_url, redirect_list_dict[root_url])
                     free_curl_list.append(c)
                     
-                # TODO
                 for c, errno, errmsg in err_list:
                     multi_curl.remove_handle(c)
-                    url = c.url
+                    root_url = url_map_root_url_dict[url]
+                    self._update_err_url(root_url, c, errmsg)
                     free_curl_list.append(c)
 
                 num_url_to_download -= (len(ok_list) + len(err_list))
@@ -193,19 +194,19 @@ class Dler(object):
         if url not in redirect_list:
             redirect_list.append(url)
         if url != final_url:
-            redirect_list.append(url)
+            redirect_list.append(final_url)
         if redirect_url and redirect_url not in redirect_list:
             redirect_list.append(redirect_url)
 
         try:
             string_buffer = url_string_buffer_dict[url]
         except KeyError as e:
-            return self._update_err_url(curl_module, 'Get no string buffer in string buffer dictionary. (%s)'%url)
+            return self._update_err_url(root_url, curl_module, 'Get no string buffer in string buffer dictionary. (%s)'%url)
 
         try:
             header_buffer = url_header_buffer_dict[url]
         except KeyError as e:
-            return self._update_err_url(curl_module, 'Get no header in header buffer dictionary. (%s)'%url)
+            return self._update_err_url(root_url, curl_module, 'Get no header in header buffer dictionary. (%s)'%url)
 
         content_string = string_buffer.getvalue()
         self.dler_cache.set_content(final_url, content_string)
@@ -222,9 +223,13 @@ class Dler(object):
         return self
 
 
-    def _update_err_url(curl_module, error_msg):
+    def _update_err_url(self, root_url, curl_module, error_msg):
         url = curl_module.url
         self.dler_cache.set_is_download_finish(url, False)
+        self.dler_cache.set_failed_download_reason(url, error_msg)
+        if url != root_url:
+            self.dler_cache.set_is_download_finish(root_url, False)
+            self.dler_cache.set_failed_download_reason(root_url, error_msg)
 
 
     def _set_url_curl_module(self, url, curl_module, timeout, string_buffer, header_buffer, header_only):
@@ -318,15 +323,14 @@ class Dler(object):
 
     def _header_line_to_dict(self, _list):
         _tmp = {}
-
         _list = [line.strip() for line in _list if line.strip()]
-        first_line = _list.pop(0)
-        _tmp[KEY_CURL_HEADER_RESPONSE] = first_line
 
         for line in _list:
             line = line.strip()
             if not line: continue
             if ':' not in line:
+                _tmp = {}
+                _tmp[KEY_CURL_HEADER_RESPONSE] = line
                 continue
             name, value = line.split(':', 1)
             name = name.strip().lower()
@@ -483,16 +487,17 @@ if __name__ == '__main__':
     dler = Dler()
     #dler.download(['1', '2', '3', '4', '5'])
     print time.time()
-    dler.download(['https://facebook.com', 'http://google.com', 'http://github.com', 'http://twitch.tv', 'http://paypal.com'])
+    #dler.download(['https://facebook.com', 'http://google.com', 'http://github.com', 'http://twitch.tv', 'http://paypal.com'])
+    #dler.download(['http://github.com'])
     #print dler.dler_cache.content_cache
-    print dler.dler_cache.header_cache
-    print dler.dler_cache.meta_cache
-    print time.time()
+    #print dler.dler_cache.header_cache
+    #print dler.dler_cache.meta_cache
+    #print time.time()
     #print dler.meta_cache['http://google.com'][KEY_META_REDIRECT_PATH]
     #print dler.meta_cache['http://paypal.com'][KEY_META_REDIRECT_PATH]
 
     import sys
-    sys.exit(0)
+    #sys.exit(0)
     sys.path.append('/Users/paul_lin/python_small_function/src/extractor/extractor/')
     import extractor
     dler.set_extractor(extractor)
