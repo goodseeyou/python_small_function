@@ -96,7 +96,7 @@ class Extractor(object):
 
 
     def _tag_visible(self, element):
-        if element.parent.name in ('style', 'script', 'head', 'title', 'meta', '[document]', 'noscript', ):
+        if element.parent.name in ('style', 'script', 'head', 'title', 'meta', '[document]', 'noscript', 'select', 'option', ):
             return False
 
         if isinstance(element, Comment):
@@ -420,12 +420,12 @@ if __name__ == '__main__':
     #print extractor.get_script_src_list()
     #print extractor.get_img_src_list()
     #print extractor.get_password_input_list()
-    #print extractor.get_limited_visible_text_list()
+    print extractor.get_limited_visible_text_list()
     #print is_potential_creditcard_form(extractor)
     #print extractor.get_meta_refresh_url_list()
     #print extractor.get_a_href_list()
     #print extractor.get_form_action_list()
     #print extractor.get_a_href_under_img_list()
-    print extractor.get_img_src_list()
+    #print extractor.get_img_src_list()
 
 
