@@ -115,24 +115,30 @@ class Dler(object):
         except TypeError as e:
             raise DlerError(e)
 
-        url_list_to_download = list(set(url_iterator))
-        len_url_list_to_download = len(url_list_to_download)
-        num_url_to_download = len_url_list_to_download
+        #redirect_list_dict = {'root url': [redirect urls]}
+        redirect_list_dict = {}
+        #url_tuple_to_download = list(tuple(root_url, url))
+        url_tuple_to_download = []
+        for url in list(set(url_iterator)):
+            url_to_download.append((url, url))
+            redirect_list_dict[url] = [url]
 
-        multi_curl = self._get_prepared_multi_curl(len_url_list_to_download)
+        num_url_to_download = len(url_tuple_to_download)
+
+        multi_curl = self._get_prepared_multi_curl(num_url_to_download)
         free_curl_list = multi_curl.handles[:]
         url_string_buffer_dict = {}
         url_header_buffer_dict = {}
-        # {'redirect url': 'root url'}
-        redirect_url_map_root_url_dict = {}
+        url_map_root_url_dict = {}
 
         while num_url_to_download != 0:
             remain_timeout = expected_timeout_time - time.time()
             if remain_timeout < 0:
                 raise DlerError('Get timeout when downloading')
 
-            while free_curl_list and url_list_to_download:
-                url = url_list_to_download.pop()
+            while free_curl_list and url_tuple_to_download:
+                root_url, url = url_tuple_to_download.pop()
+                url_map_root_url_dict[url] = root_url
                 curl_module = free_curl_list.pop()
 
                 string_buffer = StringIO()
@@ -144,17 +150,24 @@ class Dler(object):
                 multi_curl.add_handle(curl_module)
 
             while True:
-                # multi_curl.perform() is asynchronized
+                # MultiCurl.perform() is asynchronized
                 ret, num_handles = multi_curl.perform()
                 if ret != pycurl.E_CALL_MULTI_PERFORM:
                     break
 
             while True:
                 num_q, ok_list, err_list = multi_curl.info_read()
+
                 for c in ok_list:
                     multi_curl.remove_handle(c)
-                    self._update_ok_url(c, url_string_buffer_dict, url_header_buffer_dict)
-                    num_url_to_download += self._update_redirect_url(url_list_to_download, url, url_string_buffer_dict, redirect_url_map_root_url_dict)
+                    root_url = url_map_root_url_dict[url]
+                    redirect_url = self.get_redirect_url(url, url_string_buffer_dict, redirect_list_dict[root_url])
+
+                    if redirect_url:
+                        url_tuple_to_download.append((root_url, redirect_url))
+                        num_url_to_download += 1
+
+                    self._update_ok_url(root_url, c, url_string_buffer_dict, url_header_buffer_dict, redirect_url, redirect_list_dict[root_url])
                     free_curl_list.append(c)
                     
                 # TODO
@@ -171,11 +184,18 @@ class Dler(object):
             multi_curl.select(0.5)
 
 
-    def _update_ok_url(self, curl_module, url_string_buffer_dict, url_header_buffer_dict):
+    def _update_ok_url(self, root_url, curl_module, url_string_buffer_dict, url_header_buffer_dict, redirect_url, redirect_list):
         url = curl_module.url
         final_url = curl_module.getinfo(pycurl.EFFECTIVE_URL)
         http_code = curl_module.getinfo(pycurl.HTTP_CODE)
-        self.dler_cache.set_final_http_code(url, http_code)
+        is_download_finish = False if redirect_url else True
+        
+        if url not in redirect_list:
+            redirect_list.append(url)
+        if url != final_url:
+            redirect_list.append(url)
+        if redirect_url and redirect_url not in redirect_list:
+            redirect_list.append(redirect_url)
 
         try:
             string_buffer = url_string_buffer_dict[url]
@@ -188,13 +208,17 @@ class Dler(object):
             return self._update_err_url(curl_module, 'Get no header in header buffer dictionary. (%s)'%url)
 
         content_string = string_buffer.getvalue()
-        self.dler_cache.set_content(url, content_string)
+        self.dler_cache.set_content(final_url, content_string)
+        self.dler_cache.set_content_length(final_url, len(content_string))
 
         header_dict = self._header_line_to_dict(header_buffer)
-        self.dler_cache.set_header_dict(url, header_dict)
+        self.dler_cache.set_header_dict(final_url, header_dict)
 
-        self.dler_cache.set_is_download_finish(url, True)
-
+        self.dler_cache.set_redirect_url_list(root_url, redirect_list)
+        self.dler_cache.set_is_download_finish(root_url, is_download_finish)
+        self.dler_cache.set_is_redirect_completed(root_url, is_download_finish)
+        self.dler_cache.set_final_http_code(root_url, http_code)
+        
         return self
 
 
@@ -246,23 +270,14 @@ class Dler(object):
         return c
 
 
-    # return number of redirect url to download
-    def _update_redirect_url(self, url_list, url, url_string_buffer_dict, redirect_url_map_root_url_dict):
-        if url not in url_string_buffer_dict: return 0
+    def get_redirect_url(self, url, url_string_buffer_dict, redirect_url_list):
+        if url not in url_string_buffer_dict: return None
 
         content = url_string_buffer_dict[url].getvalue()
         redirect_url = self.find_redirect(content)
-        if not redirect_url: return 0
+        if not redirect_url or redirect_url == url or redirect_url in redirect_url_list: return None
 
-        root_url = url
-        while True:
-            root_url = redirect_url_map_root_url_dict.get(url, url)
-            if root_url == url: break
-
-        redirect_url_map_root_url_dict[redirect_url] = root_url
-
-        url_list.append(redirect_url)
-        return 1
+        return redirect_url
 
 
     def find_redirect(self, page):
