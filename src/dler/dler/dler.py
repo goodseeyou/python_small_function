@@ -17,7 +17,6 @@ CURL_OPT_USER_AGENT_LIST = [ 'Mozilla/5.0 (Windows NT 5.1) AppleWebKit/537.36 (K
                              ]
 LEN_USER_AGENT_LIST = len(CURL_OPT_USER_AGENT_LIST)
 KEY_CURL_HEADER_RESPONSE = '_response'
-KEY_CURL_HEADER_LOCATION = 'location'
 
 KEY_META_REDIRECT_PATH = 'redirect_url_list'
 KEY_META_IS_REDIRECT_COMPLETE = 'is_redirect_complete'
@@ -43,6 +42,7 @@ meta_cache: meta_cache[input_url] = dict(meta data)
 class DlerError(Exception): pass
 class Dler(object):
     def __init__(self, max_connection = 10, cache = None, header_cache = None, meta_cache = None, extractor = None):
+        self.custom_header = ['Accept-Language:zh-tw,zh-cn,zh-hk,zh-mo,en-us,en-gb,en-ca,fr-fr,de-de,it-it,ja-jp,ru-ru,es-es,pt-br,es-mx,bn-in,da-dk']        
         try:
             self.max_connection = int(max_connection)
         except ValueError as e:
@@ -66,12 +66,15 @@ class Dler(object):
         else:
             signal.signal(SIGPIPE, SIG_IGN)
 
+
     def set_extractor(self, extractor):
         self.extractor = extractor
+
 
     def clean(self):
         # TODO
         self.dler_cache = DlerCache()
+
 
     def get_archive_data(self, url):
         cache_map = {}
@@ -106,6 +109,7 @@ class Dler(object):
 
     def download(self, url_iterable, does_content_redirect=False, timeout_seconds=10, header_only=False):
         begin_time = time.time()
+        expected_timeout_time = timeout_seconds + begin_time
         try:
             url_iterator = iter(url_iterable)
         except TypeError as e:
@@ -113,64 +117,106 @@ class Dler(object):
 
         url_list_to_download = list(set(url_iterator))
         len_url_list_to_download = len(url_list_to_download)
-        user_agent_num = random.randint(0, LEN_USER_AGENT_LIST-1)
+        num_url_to_download = len_url_list_to_download
 
-        multi_curl = self._get_prepared_multi_curl(len_url_list_to_download, timeout_seconds)
-
-        freelist = multi_curl.handles[:]
+        multi_curl = self._get_prepared_multi_curl(len_url_list_to_download)
+        free_curl_list = multi_curl.handles[:]
         url_string_buffer_dict = {}
         url_header_buffer_dict = {}
+        # {'redirect url': 'root url'}
+        redirect_url_map_root_url_dict = {}
 
-        while url_list:
-            while freelist and url_list:
-                url = url_list.pop()
-                c = freelist.pop()
+        while num_url_to_download != 0:
+            remain_timeout = expected_timeout_time - time.time()
+            if remain_timeout < 0:
+                raise DlerError('Get timeout when downloading')
+
+            while free_curl_list and url_list_to_download:
+                url = url_list_to_download.pop()
+                curl_module = free_curl_list.pop()
 
                 string_buffer = StringIO()
                 header_buffer = list()
                 url_string_buffer_dict[url] = string_buffer
                 url_header_buffer_dict[url] = header_buffer
 
-                self._set_url_curl_module(url, c, string_buffer, header_buffer, header_only)
+                curl_module = self._set_url_curl_module(url, curl_module, remain_timeout, string_buffer, header_buffer, header_only)
+                multi_curl.add_handle(curl_module)
 
             while True:
-                ret, num_handles = m.perform()
+                # multi_curl.perform() is asynchronized
+                ret, num_handles = multi_curl.perform()
                 if ret != pycurl.E_CALL_MULTI_PERFORM:
                     break
 
             while True:
-                num_q, ok_list, err_list = m.info_read()
-
-                #TODO
+                num_q, ok_list, err_list = multi_curl.info_read()
                 for c in ok_list:
-                    m.remove_handle(c)
-                    url = c.url
-                    final_url = c.getinfo(pycurl.EFFECTIVE_URL)
-                    freelist.append(c)
-
+                    multi_curl.remove_handle(c)
+                    self._update_ok_url(c, url_string_buffer_dict, url_header_buffer_dict)
+                    num_url_to_download += self._update_redirect_url(url_list_to_download, url, url_string_buffer_dict, redirect_url_map_root_url_dict)
+                    free_curl_list.append(c)
+                    
+                # TODO
                 for c, errno, errmsg in err_list:
-                    m.remove_handle(c)
+                    multi_curl.remove_handle(c)
                     url = c.url
-                    freelist.append(c)
+                    free_curl_list.append(c)
 
-                
+                num_url_to_download -= (len(ok_list) + len(err_list))
 
                 if num_q <= 0:
                     break
 
+            multi_curl.select(0.5)
 
-    def _set_url_curl_module(self, url, curl_module, string_buffer, header_buffer, header_only):
-        curl_module.setopt(c.URL, url)
-        if self.header_only:
-            curl_module.setopt(c.NOBODY, 1)
+
+    def _update_ok_url(self, curl_module, url_string_buffer_dict, url_header_buffer_dict):
+        url = curl_module.url
+        final_url = curl_module.getinfo(pycurl.EFFECTIVE_URL)
+        http_code = curl_module.getinfo(pycurl.HTTP_CODE)
+        self.dler_cache.set_final_http_code(url, http_code)
+
+        try:
+            string_buffer = url_string_buffer_dict[url]
+        except KeyError as e:
+            return self._update_err_url(curl_module, 'Get no string buffer in string buffer dictionary. (%s)'%url)
+
+        try:
+            header_buffer = url_header_buffer_dict[url]
+        except KeyError as e:
+            return self._update_err_url(curl_module, 'Get no header in header buffer dictionary. (%s)'%url)
+
+        content_string = string_buffer.getvalue()
+        self.dler_cache.set_content(url, content_string)
+
+        header_dict = self._header_line_to_dict(header_buffer)
+        self.dler_cache.set_header_dict(url, header_dict)
+
+        self.dler_cache.set_is_download_finish(url, True)
+
+        return self
+
+
+    def _update_err_url(curl_module, error_msg):
+        url = curl_module.url
+        self.dler_cache.set_is_download_finish(url, False)
+
+
+    def _set_url_curl_module(self, url, curl_module, timeout, string_buffer, header_buffer, header_only):
+        curl_module.url = url
+        curl_module.setopt(curl_module.URL, url)
+        if header_only:
+            curl_module.setopt(curl_module.NOBODY, 1)
         else:
-            curl_module.setopt(c.WRITEFUNCTION, string_buffer.write)
-        curl_module.setopt(c.HEADERFUNCTION, header_buffer.append)
+            curl_module.setopt(curl_module.WRITEFUNCTION, string_buffer.write)
+        curl_module.setopt(curl_module.HEADERFUNCTION, header_buffer.append)
+        curl_module.setopt(curl_module.TIMEOUT, int(timeout))
 
         return curl_module
         
 
-    def _get_prepared_multi_curl(self, len_url_list, timeout):
+    def _get_prepared_multi_curl(self, len_url_list):
         num_connection = min(len_url_list, self.max_connection)
         multi_curl = pycurl.CurlMulti()
         multi_curl.handles = []
@@ -182,30 +228,97 @@ class Dler(object):
         user_agent_string = CURL_OPT_USER_AGENT_LIST[user_agent_num]
 
         for i in xrange(num_connection):
-            curl_module = self._get_prepared_curl_module(timeout, user_agent_string)
+            curl_module = self._get_prepared_curl_module(user_agent_string)
             multi_curl.handles.append(curl_module)
 
         return multi_curl
 
 
-    def _get_prepared_curl_module(self, timeout, user_agent_string):
+    def _get_prepared_curl_module(self, user_agent_string):
         c = pycurl.Curl()
         c.setopt(c.HTTPHEADER, self.custom_header)
         c.setopt(c.FOLLOWLOCATION, True)
         c.setopt(c.USERAGENT, user_agent_string)
         c.setopt(c.MAXREDIRS, CURL_OPT_MAX_NUM_REDIRECT)
         c.setopt(c.SSL_VERIFYPEER, 0)
-        c.setopt(c.TIMEOUT, timeout)
+        c.setopt(pycurl.NOSIGNAL, 1)
 
         return c
 
 
-    def _parallel_download(self, url_set, len_thread_pool, len_url_set, user_agent_num, does_content_redirect, header_only):
-        quota = self.max_connection - len_thread_pool
-        for i in xrange(min(quota, len_url_set)):
-            url = url_set.pop()
-            self.thread_pool[url] = DlerThread(url, self.condition, self.event, self.thread_pool, self.dler_cache, user_agent_num, does_content_redirect, extractor=self.extractor, header_only=header_only)
-            self.thread_pool[url].start()
+    # return number of redirect url to download
+    def _update_redirect_url(self, url_list, url, url_string_buffer_dict, redirect_url_map_root_url_dict):
+        if url not in url_string_buffer_dict: return 0
+
+        content = url_string_buffer_dict[url].getvalue()
+        redirect_url = self.find_redirect(content)
+        if not redirect_url: return 0
+
+        root_url = url
+        while True:
+            root_url = redirect_url_map_root_url_dict.get(url, url)
+            if root_url == url: break
+
+        redirect_url_map_root_url_dict[redirect_url] = root_url
+
+        url_list.append(redirect_url)
+        return 1
+
+
+    def find_redirect(self, page):
+        if not page: return None
+
+        lower_page = page.lower()
+    
+        #meta refresh url
+        if self.extractor:
+            try:
+                url_extractor = self.extractor.Extractor(page)
+                for url in url_extractor.get_meta_refresh_url_list():
+                    url = url.strip()
+                    if url: 
+                        return url                   
+            except Exception as e:
+                raise DlerError(e)
+        else:
+            before_body = RE_BEFORE_BODY.findall(lower_page)
+            page = ' '.join(before_body) if before_body else lower_page
+            metas = RE_META_TAG.findall(page)
+            for meta in metas:
+                refresh_meta = RE_REFRESH_IN_META.search(meta)
+                if not refresh_meta: continue
+                urls = RE_CONTENT_URL_IN_META.findall(meta)
+                if urls:
+                    url = urls[0].strip()
+                    return url
+    
+        # javascript redirect
+        scripts = RE_JAVASCRIPT.findall(lower_page)
+        for item in scripts:
+            for url in RE_WINDOW_LOCATION_REDIRECT.findall(item): return url.strip()
+            for url in RE_DOCUMENT_LOCATION_HREF_REDIRECT.findall(item): return url.strip()
+            for url in RE_FORM_SUBMIT_REDIRECT.findall(item): return url.strip()
+    
+        return None
+
+    def _header_line_to_dict(self, _list):
+        _tmp = {}
+
+        _list = [line.strip() for line in _list if line.strip()]
+        first_line = _list.pop(0)
+        _tmp[KEY_CURL_HEADER_RESPONSE] = first_line
+
+        for line in _list:
+            line = line.strip()
+            if not line: continue
+            if ':' not in line:
+                continue
+            name, value = line.split(':', 1)
+            name = name.strip().lower()
+            value = value.strip()
+            _tmp[name] = value
+
+        return _tmp
 
 
 def valid_dict(func):
@@ -349,201 +462,22 @@ class DlerCache(object):
 
     def get_final_http_code(self, url):
         return self.meta_cache.get(url, {}).get(KEY_META_HTTP_CODE, -1)
-
-
-
-
-class DlerThreadError(DlerError): pass
-class DlerThread(threading.Thread):
-    def __init__(self, url, condition, event, thread_pool, dler_cache, user_agent_num, does_content_redirect, max_redirect = None, extractor = None, header_only=False):
-        threading.Thread.__init__(self)
-        if not isinstance(dler_cache, DlerCache):
-            raise DlerThreadError('dler_cache should be instance of DlerCache but %s'%type(dler_cache))
-        self.dler_cache = dler_cache
-        self.url = url
-        self.url_chain = [url]
-        self.con = condition
-        self.event  = event
-        self.thread_pool = thread_pool
-        self.user_agent_num = user_agent_num
-        self.max_redirect = 12 if max_redirect is None else max_redirect
-        self.extractor = extractor if extractor else None
-        self.does_content_redirect = does_content_redirect
-        self.header_only = header_only
-        ''' TODO accept langauge will be used to target regional, e.g. only open for zh-cn and block if there is ja-jp '''
-        self.custom_header = ['Accept-Language:zh-tw,zh-cn,zh-hk,zh-mo,en-us,en-gb,en-ca,fr-fr,de-de,it-it,ja-jp,ru-ru,es-es,pt-br,es-mx,bn-in,da-dk']
-        self.curl_model_list = []
-
-    def close_curl_model(self):
-        for c in self.curl_model_list:
-            try:
-                c.close()
-            except:
-                pass
-
-    def run(self):
-        try:
-            self.download_url()
-            self.thread_pool.pop(self.url, None)
-        except Exception as e:
-        #except ValueError as e:
-            self.dler_cache.set_is_download_finish(self.url, False)
-            failed_reason = '%s:%s' % (e.__class__.__name__, str(e))
-            self.dler_cache.set_failed_download_reason(self.url, failed_reason)
-            self.close_curl_model()
-            self.thread_pool.pop(self.url, None)
-
-    def download_url(self):
-        to_be_download_list = [self.url]
-        redirected_num = 0
-
-        while(len(to_be_download_list) != 0):
-            do_redirect = False
-
-            url = to_be_download_list.pop(0)
-            content, header_dict, http_code = self._curl(url, self.user_agent_num)
-            self.dler_cache.set_content(url, content)
-            self.dler_cache.set_header_dict(url, header_dict)
-            # use the begining url as key for meta information
-            self.dler_cache.set_final_http_code(self.url, http_code)
-
-            if KEY_CURL_HEADER_LOCATION in header_dict and http_code >= 300 and http_code < 400:
-                next_url = urljoin(url, header_dict[KEY_CURL_HEADER_LOCATION])
-                if not next_url or url == next_url: continue
-                do_redirect = True
-
-            ''' 
-            This function aggressively find redirect URL
-            by parse content and find the possible auto triggerring connect URL.
-            Lower the content for regular expression match, but it might wrongly update URL and cause 404
-            ''' 
-            if not do_redirect and self.does_content_redirect:
-                url_set = self.find_redirect(content)
-                len_url_set = len(url_set)
-
-                if len_url_set == 1: 
-                    next_url = urljoin(url, url_set.pop())
-                    do_redirect = True
-
-                elif len_url_set > 1:
-                    raise DlerThreadError('Get more than 1 URL to redirect from content parsing')
-
-            if do_redirect:
-                to_be_download_list.append(next_url)
-                self.url_chain.append(next_url)
-                redirected_num += 1
-
-                if redirected_num >= self.max_redirect:
-                    self.dler_cache.set_is_download_finish(self.url, False)
-                    self.dler_cache.set_is_redirect_completed(self.url, False)
-                    break
-            elif not to_be_download_list:
-                self.dler_cache.set_is_redirect_completed(self.url, True)
-
-
-        self.dler_cache.set_redirect_url_list(self.url, self.url_chain)
-    
-        final_content = self.dler_cache.get_final_content(self.url)
-        len_final_content = len(final_content) if final_content is not None else -1
-        self.dler_cache.set_content_length(self.url, len_final_content)
-
-    def _curl(self, url, user_agent_num=0):
-        string_buffer = StringIO()
-        header_buffer = list()
-        c = pycurl.Curl()
-        c.setopt(c.URL, url)
-        c.setopt(c.HTTPHEADER, self.custom_header)
-        if self.header_only:
-            c.setopt(c.NOBODY, 1)
-        else:
-            c.setopt(c.WRITEFUNCTION, string_buffer.write)
-        c.setopt(c.FOLLOWLOCATION, False)
-        c.setopt(c.USERAGENT, CURL_OPT_USER_AGENT_LIST[user_agent_num])
-        c.setopt(c.MAXREDIRS, CURL_OPT_MAX_NUM_REDIRECT)
-        c.setopt(c.HEADERFUNCTION, header_buffer.append)
-        c.setopt(c.SSL_VERIFYPEER, 0)
-
-        try:
-            c.perform()
-
-        except Exception as e:
-            self.dler_cache.set_is_download_finish(self.url, False)
-
-            failed_reason = '%s:%s' % (e.__class__.__name__, str(e))
-            self.dler_cache.set_failed_download_reason(self.url, failed_reason)
-
-            raise DlerThreadError(e)
-
-        http_code = int(c.getinfo(c.HTTP_CODE))
-        self.dler_cache.set_final_http_code(self.url, http_code)
-        self.dler_cache.set_is_download_finish(self.url, True)
-
-        c.close()
-
-        return string_buffer.getvalue(),  self._header_line_to_dict(header_buffer), http_code
-
-    def _header_line_to_dict(self, _list):
-        _tmp = {}
-
-        _list = [line.strip() for line in _list if line.strip()]
-        first_line = _list.pop(0)
-        _tmp[KEY_CURL_HEADER_RESPONSE] = first_line
-        for line in _list:
-            line = line.strip()
-            if not line: continue
-            name, value = line.split(':', 1)
-            name = name.strip().lower()
-            value = value.strip()
-            _tmp[name] = value
-
-        return _tmp
-
-    def find_redirect(self, page):
-        lower_page = page.lower()
-        redirect_url = set()
-    
-        #meta refresh url
-        if self.extractor:
-            try:
-                url_extractor = self.extractor.Extractor(page)
-                for url in url_extractor.get_meta_refresh_url_list():
-                    url = url.strip()
-                    if url: redirect_url.add(url)
-            except Exception as e:
-                raise DlerThreadError(e)
-        else:
-            before_body = RE_BEFORE_BODY.findall(lower_page)
-            page = ' '.join(before_body) if before_body else lower_page
-            metas = RE_META_TAG.findall(page)
-            for meta in metas:
-                refresh_meta = RE_REFRESH_IN_META.search(meta)
-                if not refresh_meta: continue
-                urls = RE_CONTENT_URL_IN_META.findall(meta)
-                if urls:
-                    redirect_url.add(urls[0])
-    
-        # javascript redirect
-        scripts = RE_JAVASCRIPT.findall(lower_page)
-        for item in scripts:
-            for url in RE_WINDOW_LOCATION_REDIRECT.findall(item): redirect_url.add(url)
-            for url in RE_DOCUMENT_LOCATION_HREF_REDIRECT.findall(item): redirect_url.add(url)
-            for url in RE_FORM_SUBMIT_REDIRECT.findall(item): redirect_url.add(url)
-    
-        return set([url.strip() for url in redirect_url if url.strip()])
             
 
 if __name__ == '__main__':
     dler = Dler()
     #dler.download(['1', '2', '3', '4', '5'])
     print time.time()
-    #dler.download(['https://facebook.com', 'http://google.com', 'http://github.com', 'http://twitch.tv', 'http://paypal.com'])
-    #print dler.cache
-    #print dler.header_cache
-    #print time.time()
+    dler.download(['https://facebook.com', 'http://google.com', 'http://github.com', 'http://twitch.tv', 'http://paypal.com'])
+    #print dler.dler_cache.content_cache
+    print dler.dler_cache.header_cache
+    print dler.dler_cache.meta_cache
+    print time.time()
     #print dler.meta_cache['http://google.com'][KEY_META_REDIRECT_PATH]
     #print dler.meta_cache['http://paypal.com'][KEY_META_REDIRECT_PATH]
 
     import sys
+    sys.exit(0)
     sys.path.append('/Users/paul_lin/python_small_function/src/extractor/extractor/')
     import extractor
     dler.set_extractor(extractor)
@@ -552,5 +486,4 @@ if __name__ == '__main__':
     #print dler.dler_cache.get_final_content(sys.argv[1])
     print dler.dler_cache.content_cache
     print dler.dler_cache.header_cache
-    print ''
     print dler.dler_cache.meta_cache
