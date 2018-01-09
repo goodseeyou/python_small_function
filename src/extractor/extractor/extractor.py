@@ -1,4 +1,5 @@
 import lxml
+from lxml import etree
 from bs4 import BeautifulSoup
 from bs4.element import Comment
 import re
@@ -208,6 +209,14 @@ class Extractor(object):
             img_tags = filter(self._tag_visible, img_tags)
         img_src_list = self.get_non_empty_attributes_str_list(img_tags, 'src')
         return img_src_list
+
+
+    def is_xml_format(self):
+        try:
+            etree.fromstring(self.page)
+            return True
+        except lxml.etree.XMLSyntaxError as e:
+            return False    
     
 
 def _get_path_structure(reduced_normalize_url):
