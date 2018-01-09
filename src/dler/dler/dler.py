@@ -9,13 +9,15 @@ import hashlib
 
 
 CURL_OPT_MAX_NUM_REDIRECT = 12
-CURL_OPT_USER_AGENT_LIST = [ 'Mozilla/5.0 (Windows NT 5.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.2224.3 Safari/537.36', # Windows XP Chrome
-                             'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.2228.0 Safari/537.36', # Windows 7 Chrome
-                             'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.2227.1 Safari/537.36', # OSX Chrome
+CURL_OPT_USER_AGENT_LIST = [ 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.84 Safari/537.36', # Windows 10 Chrome 63
+                             'Mozilla/5.0 (Windows NT 5.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.2224.3 Safari/537.36', # Windows XP Chrome 62
+                             'Mozilla/5.0 (Windows NT 6.1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.2228.0 Safari/537.36', # Windows 7 Chrome 62
+                             'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_10_1) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.2227.1 Safari/537.36', # OSX Chrome 62
                              'Mozilla/4.0 (Compatible; MSIE 8.0; Windows NT 5.2; Trident/6.0)', # Windows Server 2003 IE 10
                              'Mozilla/5.0 (compatible; MSIE 8.0; Windows NT 5.1; Trident/4.0; SLCC1; .NET CLR 3.0.4506.2152; .NET CLR 3.5.30729; .NET CLR 1.1.4322)' # Windows XP IE 8
                              ]
 LEN_USER_AGENT_LIST = len(CURL_OPT_USER_AGENT_LIST)
+DEFAULT_USER_AGENT_NUMBER = 0
 KEY_CURL_HEADER_RESPONSE = '_response'
 
 KEY_META_REDIRECT_PATH = 'redirect_url_list'
@@ -253,8 +255,8 @@ class Dler(object):
         if num_connection <= 0:
             return multi_curl
 
-        user_agent_num = random.randint(0, LEN_USER_AGENT_LIST-1)
-        user_agent_string = CURL_OPT_USER_AGENT_LIST[user_agent_num]
+        #user_agent_num = random.randint(0, LEN_USER_AGENT_LIST-1)
+        user_agent_string = CURL_OPT_USER_AGENT_LIST[DEFAULT_USER_AGENT_NUMBER]
 
         for i in xrange(num_connection):
             curl_module = self._get_prepared_curl_module(user_agent_string)
