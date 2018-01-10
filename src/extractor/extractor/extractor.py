@@ -179,13 +179,24 @@ class Extractor(object):
 
 
     def get_non_empty_attributes_str_list(self, elements, attribute_key):
-        return [e.attrs.get(attribute_key, '').strip() for e in elements if attribute_key in e.attrs and e.attrs.get(attribute_key, '').strip()]
+        return self.get_attributes_str_list(elements, attribute_key, does_accept_empty=False)
+
+
+    def get_attributes_str_list(self, elements, attribute_key, does_accept_empty=True):
+        _list = []
+        for e in elements:
+            if attribute_key not in e.attrs: continue
+            _value = e.attrs[attribute_key].strip()
+            if not does_accept_empty and not _value: continue
+            _list.append(e.attrs[attribute_key])
+
+        return _list
 
 
     def get_a_href_list(self):
         a_tags = self.soup.findAll('a')
         visible_a_tags = filter(self._tag_visible, a_tags)
-        a_links = self.get_non_empty_attributes_str_list(visible_a_tags, 'href')
+        a_links = self.get_attributes_str_list(visible_a_tags, 'href')
         return a_links
 
 
@@ -429,10 +440,10 @@ if __name__ == '__main__':
     #print extractor.get_script_src_list()
     #print extractor.get_img_src_list()
     #print extractor.get_password_input_list()
-    print extractor.get_limited_visible_text_list()
+    #print extractor.get_limited_visible_text_list()
     #print is_potential_creditcard_form(extractor)
     #print extractor.get_meta_refresh_url_list()
-    #print extractor.get_a_href_list()
+    print extractor.get_a_href_list()
     #print extractor.get_form_action_list()
     #print extractor.get_a_href_under_img_list()
     #print extractor.get_img_src_list()
