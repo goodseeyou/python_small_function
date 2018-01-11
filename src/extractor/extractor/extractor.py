@@ -193,6 +193,12 @@ class Extractor(object):
         return _list
 
 
+    def get_textarea_element_list(self):
+        textarea_tags = self.soup.findAll('textarea')
+        visible_textarea = filter(self._tag_visible, textarea_tags)
+        return list(visible_textarea)
+
+
     def get_a_href_list(self):
         a_tags = self.soup.findAll('a')
         visible_a_tags = filter(self._tag_visible, a_tags)
@@ -443,9 +449,8 @@ if __name__ == '__main__':
     #print extractor.get_limited_visible_text_list()
     #print is_potential_creditcard_form(extractor)
     #print extractor.get_meta_refresh_url_list()
-    print extractor.get_a_href_list()
+    #print extractor.get_a_href_list()
     #print extractor.get_form_action_list()
     #print extractor.get_a_href_under_img_list()
     #print extractor.get_img_src_list()
-
-
+    print extractor.get_textarea_element_list()
