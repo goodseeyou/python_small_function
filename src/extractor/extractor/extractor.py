@@ -193,6 +193,24 @@ class Extractor(object):
         return _list
 
 
+    def get_visible_input_tag_element_list(self, type_tuple=None, exclude_type_tuple=None):
+        input_tags = self.soup.findAll('input')
+        visible_input_tags = filter(self._tag_visible, input_tags)
+        visible_input_tags = list(visible_input_tags)
+
+        if type_tuple is not None:
+            if not isinstance(type_tuple, tuple):
+                raise ExtractorError('type_tuple should be type of tuple but %s is %s' % (type_tuple, type(type_tuple)))
+            visible_input_tags = filter(lambda tag:tag.attrs.get('type', 'text') in type_tuple, visible_input_tags[:])
+
+        if exclude_type_tuple is not None:
+            if not isinstance(exclude_type_tuple, tuple):
+                raise ExtractorError('exclude_type_tuple should be type of tuple but %s is %s' % (exclude_type_tuple, type(exclude_type_tuple)))
+            visible_input_tags = filter(lambda tag: not tag.attrs.get('type', 'text') in exclude_type_tuple, visible_input_tags[:])
+
+        return visible_input_tags
+
+
     def get_textarea_element_list(self):
         textarea_tags = self.soup.findAll('textarea')
         visible_textarea = filter(self._tag_visible, textarea_tags)
@@ -453,4 +471,5 @@ if __name__ == '__main__':
     #print extractor.get_form_action_list()
     #print extractor.get_a_href_under_img_list()
     #print extractor.get_img_src_list()
-    print extractor.get_textarea_element_list()
+    #print extractor.get_textarea_element_list()
+    print extractor.get_visible_input_tag_element_list(('text', 'image','hidden'), ('hidden', ))
