@@ -281,7 +281,7 @@ class Dler(object):
         if url not in url_string_buffer_dict: return None
 
         content = url_string_buffer_dict[url].getvalue()
-        redirect_url = self.find_redirect(content)
+        redirect_url = urljoin(url, self.find_redirect(content))
         if not redirect_url or redirect_url == url or redirect_url in redirect_url_list: return None
 
         return redirect_url
