@@ -213,6 +213,15 @@ class Extractor(object):
         return visible_input_tags
 
 
+    def get_base_url(self, url):
+        base_tags = self.soup.findAll('base')
+        if not base_tags:
+            return url
+        base_tag = base_tags[0]
+        base_href = base_tag.attrs.get('href', '')
+        return urljoin(url, base_href)
+
+
     def get_textarea_element_list(self):
         textarea_tags = self.soup.findAll('textarea')
         visible_textarea = filter(self._tag_visible, textarea_tags)
@@ -474,4 +483,5 @@ if __name__ == '__main__':
     #print extractor.get_a_href_under_img_list()
     #print extractor.get_img_src_list()
     #print extractor.get_textarea_element_list()
-    print extractor.get_visible_input_tag_element_list(('text', 'image','hidden'), ('hidden', ))
+    #print extractor.get_visible_input_tag_element_list(('text', 'image','hidden'), ('hidden', ))
+    print extractor.get_base_url('http://www.schlagernacht.de/de/home/')
