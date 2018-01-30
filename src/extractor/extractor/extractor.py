@@ -40,6 +40,7 @@ class ExtractorAnalyzeError(Exception): pass
 class Extractor(object):
     def __init__(self, page):
         if not page: page = ''
+        self.base_url_cache = {}
         try:
             self.soup = BeautifulSoup(page, 'lxml')
         except Exception as e:
@@ -214,12 +215,23 @@ class Extractor(object):
 
 
     def get_base_url(self, url):
+        cache_url = self.base_url_cache.get(url, '')
+        if cache_url:
+            return cache_url
+
         base_tags = self.soup.findAll('base')
         if not base_tags:
             return url
         base_tag = base_tags[0]
         base_href = base_tag.attrs.get('href', '')
-        return urljoin(url, base_href)
+        base_url = urljoin(url, base_href)
+
+        if len(self.base_url_cache) > 100:
+            self.self.base_url_cache = {}
+
+        self.base_url_cache[url] = base_url
+
+        return base_url
 
 
     def get_textarea_element_list(self):
@@ -320,13 +332,16 @@ def is_reduced_equal(url, target, does_trim=False):
 
 # Recognize only by URL
 def is_same_icon(url, target_url, url_extractor, target_extractor):
-    if does_has_scheme(url) ^ does_has_scheme(target_url): raise ExtractorAnalyzeError('URL and target URL should have the same format.')
+    base_url = url_extractor.get_base_url(url)
+    target_base_url = target_extractor.get_base_url(target_url)
 
-    url_icon_set = set([_reduced_normalize_url(urljoin(url, icon_url.strip())) \
+    if does_has_scheme(base_url) ^ does_has_scheme(target_base_url): raise ExtractorAnalyzeError('base URL and target base URL should have the same format.')
+
+    url_icon_set = set([_reduced_normalize_url(urljoin(base_url, icon_url.strip())) \
         for icon_url in url_extractor.get_shortcut_icon_list() if icon_url.strip()])
     len_url_icon_set = len(url_icon_set)
 
-    target_icon_set = set([_reduced_normalize_url(urljoin(target_url, icon_url.strip())) \
+    target_icon_set = set([_reduced_normalize_url(urljoin(target_base_url, icon_url.strip())) \
         for icon_url in target_extractor.get_shortcut_icon_list() if icon_url.strip()])
     len_target_icon_set = len(target_icon_set)
 
@@ -349,33 +364,33 @@ def _does_has_same_item(iter_a, iter_b):
     return False
 
 def get_similarity_by_stylesheet(url, target_url, url_extractor, target_extractor):
-    return _get_similarity_by_extract_function(url, target_url, url_extractor.get_stylesheet_href_list, target_extractor.get_stylesheet_href_list, compare_target=COMPARE_TARGET_PATH_NO_QUERY)
+    return _get_similarity_by_extract_function(url_extractor.get_base_url(url), target_extractor.get_base_url(target_url), url_extractor.get_stylesheet_href_list, target_extractor.get_stylesheet_href_list, compare_target=COMPARE_TARGET_PATH_NO_QUERY)
 
 def get_similarity_by_script(url, target_url, url_extractor, target_extractor):
-    return _get_similarity_by_extract_function(url, target_url, url_extractor.get_script_src_list, target_extractor.get_script_src_list, compare_target=COMPARE_TARGET_PATH_NO_QUERY)
+    return _get_similarity_by_extract_function(url_extractor.get_base_url(url), target_extractor.get_base_url(target_url), url_extractor.get_script_src_list, target_extractor.get_script_src_list, compare_target=COMPARE_TARGET_PATH_NO_QUERY)
 
 def get_similarity_by_title_text(url, target_url, url_extractor, target_extractor):
-    return _get_similarity_by_extract_function(url, target_url, url_extractor.get_title_text_list, target_extractor.get_title_text_list)
+    return _get_similarity_by_extract_function(url_extractor.get_base_url(url), target_extractor.get_base_url(target_url), url_extractor.get_title_text_list, target_extractor.get_title_text_list)
 
 def get_similarity_by_img(url, target_url, url_extractor, target_extractor):
-    return _get_similarity_by_extract_function(url, target_url, url_extractor.get_img_src_list, target_extractor.get_img_src_list, compare_target=COMPARE_TARGET_NO_FILENAME)
+    return _get_similarity_by_extract_function(url_extractor.get_base_url(url), target_extractor.get_base_url(target_url), url_extractor.get_img_src_list, target_extractor.get_img_src_list, compare_target=COMPARE_TARGET_NO_FILENAME)
 
-def _get_similarity_by_extract_function(url, target_url, url_extract_function, target_extract_function, compare_target=COMPARE_TARGET_FULL):
-    if does_has_scheme(url) ^ does_has_scheme(target_url): raise ExtractorAnalyzeError('URL and target URL should have the same format.')
+def _get_similarity_by_extract_function(base_url, target_base_url, url_extract_function, target_extract_function, compare_target=COMPARE_TARGET_FULL):
+    if does_has_scheme(base_url) ^ does_has_scheme(target_base_url): raise ExtractorAnalyzeError('base URL and target base URL should have the same format.')
 
     # use filename to decrease FP [case] "http://012.tw/houvyWZ"
     if compare_target == COMPARE_TARGET_FULL:
         url_extract_collection = [extract_item for extract_item in url_extract_function()]
         target_extract_collection = [extract_item for extract_item in target_extract_function()]
     elif compare_target == COMPARE_TARGET_NO_FILENAME:
-        url_extract_collection = set(['/'.join(_reduced_normalize_url(urljoin(url, extract_url)).split('/')[:-1]) for extract_url in url_extract_function()])
-        target_extract_collection = set(['/'.join(_reduced_normalize_url(urljoin(target_url, extract_url)).split('/')[:-1]) for extract_url in target_extract_function()])
+        url_extract_collection = set(['/'.join(_reduced_normalize_url(urljoin(base_url, extract_url)).split('/')[:-1]) for extract_url in url_extract_function()])
+        target_extract_collection = set(['/'.join(_reduced_normalize_url(urljoin(target_base_url, extract_url)).split('/')[:-1]) for extract_url in target_extract_function()])
     elif compare_target == COMPARE_TARGET_FILENAME:
         url_extract_collection = set([extract_url.split('/')[-1].split('?')[0] for extract_url in url_extract_function()])
         target_extract_collection = set([extract_url.split('/')[-1].split('?')[0] for extract_url in target_extract_function()])
     elif compare_target == COMPARE_TARGET_PATH_NO_QUERY:
-        url_extract_collection = set([_get_path_structure(_reduced_normalize_url(urljoin(url, extract_url))) for extract_url in url_extract_function()])
-        target_extract_collection = set([_get_path_structure(_reduced_normalize_url(urljoin(target_url, extract_url))) for extract_url in target_extract_function()])
+        url_extract_collection = set([_get_path_structure(_reduced_normalize_url(urljoin(base_url, extract_url))) for extract_url in url_extract_function()])
+        target_extract_collection = set([_get_path_structure(_reduced_normalize_url(urljoin(target_base_url, extract_url))) for extract_url in target_extract_function()])
     else:
         raise ExtractorError('invalid compare target %s for target_url: %s' % (compare_taret, target_url))
 
