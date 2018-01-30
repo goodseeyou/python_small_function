@@ -60,13 +60,13 @@ class Extractor(object):
     #def get_img_src_list(self):
     #    return self._get_src_from_tag(RE_IMG.findall(self.page))
     def get_password_input_list(self):
-        return self.get_visible_input_tag_element_list(('password'))
+        return self.get_visible_input_tag_element_list(('password', ))
     def get_text_input_list(self):
-        return self.get_visible_input_tag_element_list(('text'))
+        return self.get_visible_input_tag_element_list(('text', ))
     def get_submit_input_list(self):
-        return self.get_visible_input_tag_element_list(('submit'))
+        return self.get_visible_input_tag_element_list(('submit', ))
     def get_email_input_list(self):
-        return self.get_visible_input_tag_element_list(('email'))
+        return self.get_visible_input_tag_element_list(('email', ))
     def get_image_input_list(self):
         return RE_INPUT_TAG_IMAGE_TYPE.findall(self.page)
     def get_select_list(self):
