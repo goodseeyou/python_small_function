@@ -45,21 +45,21 @@ class Extractor(object):
             self.soup = BeautifulSoup(page, 'lxml')
         except Exception as e:
             raise ExtractorError('Failed to initialize Extractor due to %s' % e)
-        self.page = page.replace('\n', '').lower()
+        self.page_lower = page.replace('\n', '').lower()
 
     def get_href_list(self):
-        return RE_HREF.findall(self.page)
+        return RE_HREF.findall(self.page_lower)
     def get_title_list(self):
-        return RE_TITLE_TAG.findall(self.page)
+        return RE_TITLE_TAG.findall(self.page_lower)
     def get_shortcut_icon_list(self):
-        return self._get_href_from_tag(RE_SHORTCUT_ICON.findall(self.page))
+        return self._get_href_from_tag(RE_SHORTCUT_ICON.findall(self.page_lower))
     def get_stylesheet_href_list(self):
-        return self._get_href_from_tag(RE_STYLESHEET.findall(self.page))
+        return self._get_href_from_tag(RE_STYLESHEET.findall(self.page_lower))
     def get_script_src_list(self):
-        return self._get_src_from_tag(RE_SCRIPT.findall(self.page))
+        return self._get_src_from_tag(RE_SCRIPT.findall(self.page_lower))
     # @depreciated
     #def get_img_src_list(self):
-    #    return self._get_src_from_tag(RE_IMG.findall(self.page))
+    #    return self._get_src_from_tag(RE_IMG.findall(self.page_lower))
     def get_password_input_list(self):
         return self.get_visible_input_tag_element_list(('password', ))
     def get_text_input_list(self):
@@ -69,11 +69,11 @@ class Extractor(object):
     def get_email_input_list(self):
         return self.get_visible_input_tag_element_list(('email', ))
     def get_image_input_list(self):
-        return RE_INPUT_TAG_IMAGE_TYPE.findall(self.page)
+        return RE_INPUT_TAG_IMAGE_TYPE.findall(self.page_lower)
     def get_select_list(self):
-        return RE_SELECT_TAG.findall(self.page)
+        return RE_SELECT_TAG.findall(self.page_lower)
     def get_option_list(self):
-        return RE_OPTION_TAG.findall(self.page)
+        return RE_OPTION_TAG.findall(self.page_lower)
     def get_limited_visible_text_list(self):
         try:
             return self.text_from_html()
@@ -83,7 +83,7 @@ class Extractor(object):
         return self.get_lower_eng_num_text_list(text = ' '.join(self.get_title_list()))
     def get_lower_eng_num_text_list(self, text=None):
         if text is None:
-            return [tok.lower().strip() for tok in RE_ENG_NUM_TEXT.findall(self.page) if tok not in STOP_WORD]
+            return [tok.lower().strip() for tok in RE_ENG_NUM_TEXT.findall(self.page_lower) if tok not in STOP_WORD]
         else:
             return [tok.lower().strip() for tok in RE_ENG_NUM_TEXT.findall(text)]
 
@@ -271,10 +271,13 @@ class Extractor(object):
 
     def is_xml_format(self):
         try:
-            etree.fromstring(self.page)
+            etree.fromstring(self.page_lower)
             return True
         except lxml.etree.XMLSyntaxError as e:
             return False    
+
+    def does_have_keyword_search(self):
+        return 'search' in self.page_lower
     
 
 def _get_path_structure(reduced_normalize_url):
