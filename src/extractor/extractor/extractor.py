@@ -276,8 +276,10 @@ class Extractor(object):
         except lxml.etree.XMLSyntaxError as e:
             return False    
 
+
     def does_have_keyword_search(self):
         return 'search' in self.page_lower
+
 
     def does_have_keyword_subscri(self):
         return 'subscri' in self.page_lower
