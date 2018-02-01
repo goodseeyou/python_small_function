@@ -283,6 +283,11 @@ class Extractor(object):
 
     def does_have_keyword_subscri(self):
         return 'subscri' in self.page_lower
+
+
+    def is_email_form(self):
+        len_accept_input_tag = len(self.get_visible_input_tag_element_list(('email', 'text')))
+        return len_accept_input_tag == 1 and 'mail' in self.page_lower
     
 
 def _get_path_structure(reduced_normalize_url):
