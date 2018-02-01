@@ -290,7 +290,7 @@ class Extractor(object):
         return len_accept_input_tag == 1 and 'mail' in self.page_lower
 
     def does_have_form_tag(self):
-        is_existed = True if self.soup.findall('form') else False
+        is_existed = True if self.soup.findAll('form') else False
         return is_existed
     
 
