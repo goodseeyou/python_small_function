@@ -288,6 +288,10 @@ class Extractor(object):
     def is_email_form(self):
         len_accept_input_tag = len(self.get_visible_input_tag_element_list(('email', 'text')))
         return len_accept_input_tag == 1 and 'mail' in self.page_lower
+
+    def does_have_form_tag(self):
+        is_existed = True if self.soup.findall('form') else False
+        return is_existed
     
 
 def _get_path_structure(reduced_normalize_url):
