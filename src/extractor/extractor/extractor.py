@@ -49,8 +49,11 @@ class Extractor(object):
 
     def get_href_list(self):
         return RE_HREF.findall(self.page_lower)
-    def get_title_list(self):
-        return RE_TITLE_TAG.findall(self.page_lower)
+    def get_title_list(self, case_sensitive=False):
+        if case_sensitive:
+            return [title_tag.string for title_tag in self.soup.findAll('title')]
+        else:
+            return [title_tag.string.lower() for title_tag in self.soup.findAll('title')]
     def get_shortcut_icon_list(self):
         return self._get_href_from_tag(RE_SHORTCUT_ICON.findall(self.page_lower))
     def get_stylesheet_href_list(self):
@@ -326,6 +329,7 @@ def _reduced_normalize_url(url):
 
     return '%s%s?%s' % (domain, path, query)
 
+
 def trim_www(_str):
     previous = None
     while previous != _str:
@@ -334,6 +338,7 @@ def trim_www(_str):
             _str = _str[4:]
 
     return _str
+
 
 def is_reduced_equal(url, target, does_trim=False):
     url = _reduced_normalize_url(url).strip()
@@ -346,6 +351,7 @@ def is_reduced_equal(url, target, does_trim=False):
         target = trim_www(target)
 
     return url == target
+
 
 # Recognize only by URL
 def is_same_icon(url, target_url, url_extractor, target_extractor):
@@ -374,23 +380,29 @@ def is_same_icon(url, target_url, url_extractor, target_extractor):
 
     return does_has_same_without_default, does_has_same_with_default, len_url_icon_set, len_target_icon_set, url_icon_set, target_icon_set
 
+
 def _does_has_same_item(iter_a, iter_b):
     for a in iter_a:
         if a in iter_b:
             return True
     return False
 
+
 def get_similarity_by_stylesheet(url, target_url, url_extractor, target_extractor):
     return _get_similarity_by_extract_function(url_extractor.get_base_url(url), target_extractor.get_base_url(target_url), url_extractor.get_stylesheet_href_list, target_extractor.get_stylesheet_href_list, compare_target=COMPARE_TARGET_PATH_NO_QUERY)
+
 
 def get_similarity_by_script(url, target_url, url_extractor, target_extractor):
     return _get_similarity_by_extract_function(url_extractor.get_base_url(url), target_extractor.get_base_url(target_url), url_extractor.get_script_src_list, target_extractor.get_script_src_list, compare_target=COMPARE_TARGET_PATH_NO_QUERY)
 
+
 def get_similarity_by_title_text(url, target_url, url_extractor, target_extractor):
     return _get_similarity_by_extract_function(url_extractor.get_base_url(url), target_extractor.get_base_url(target_url), url_extractor.get_title_text_list, target_extractor.get_title_text_list)
 
+
 def get_similarity_by_img(url, target_url, url_extractor, target_extractor):
     return _get_similarity_by_extract_function(url_extractor.get_base_url(url), target_extractor.get_base_url(target_url), url_extractor.get_img_src_list, target_extractor.get_img_src_list, compare_target=COMPARE_TARGET_NO_FILENAME)
+
 
 def _get_similarity_by_extract_function(base_url, target_base_url, url_extract_function, target_extract_function, compare_target=COMPARE_TARGET_FULL):
     if does_has_scheme(base_url) ^ does_has_scheme(target_base_url): raise ExtractorAnalyzeError('base URL and target base URL should have the same format.')
@@ -411,12 +423,15 @@ def _get_similarity_by_extract_function(base_url, target_base_url, url_extract_f
     else:
         raise ExtractorError('invalid compare target %s for target_url: %s' % (compare_taret, target_url))
 
+    return get_similarity(url_extract_collection, target_extract_collection)
+
+
+def get_similarity(url_extract_collection, target_extract_collection):
     len_url_extract_collection = len(url_extract_collection)
     len_target_extract_collection = len(target_extract_collection)
     
     common_count = _common_item_count(url_extract_collection, target_extract_collection)
 
-    # Both url have no extractsheet link. It's a common feature, so define the ratio as 1
     common_ratio_of_min = -1000 if len_url_extract_collection == 0 and len_target_extract_collection == 0 \
                             else common_count / float(max(1, min(len_url_extract_collection, len_target_extract_collection)))
 
@@ -472,6 +487,7 @@ def is_single_signin_form(extractor):
 
     return False
 
+
 # data source: http://data.iana.org/TLD/tlds-alpha-by-domain.txt
 def parse_top_level_domain(file_path):
     tld_list = []
@@ -501,7 +517,7 @@ if __name__ == '__main__':
     #print get_similarity_by_img('http://google.com/','http://google.com', extractor, t_ext)
     #print is_same_icon('http://www.telecomsource.net:80/showthread.php?3121-What-is-reference-signals-in-LTE','http://www.telecomsource.net/',extractor,t_ext)
     #print extractor.get_href_list()
-    #print extractor.get_title_list()
+    print extractor.get_title_list(True)
     #print extractor.get_shortcut_icon_list()
     #print extractor.get_stylesheet_href_list()
     #print extractor.get_script_src_list()
@@ -516,4 +532,4 @@ if __name__ == '__main__':
     #print extractor.get_img_src_list()
     #print extractor.get_textarea_element_list()
     #print extractor.get_visible_input_tag_element_list(('text', 'image','hidden'), ('hidden', ))
-    print extractor.get_base_url('http://www.schlagernacht.de/de/home/')
+    #print extractor.get_base_url('http://www.schlagernacht.de/de/home/')
