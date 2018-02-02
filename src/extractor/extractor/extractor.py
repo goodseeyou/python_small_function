@@ -219,13 +219,16 @@ class Extractor(object):
 
     def get_base_url(self, url, base_tag_only=False):
         cache_url = self.base_url_cache.get(url, '')
-        if cache_url:
+        if cache_url and not base_tag_only:
             return cache_url
 
         base_tags = self.soup.findAll('base')
         if not base_tags:
             if base_tag_only: return None
-            else: return url
+            else: 
+                self.base_url_cache[url] = url
+                return url
+                
         base_tag = base_tags[0]
         base_href = base_tag.attrs.get('href', '')
         base_url = urljoin(url, base_href)
