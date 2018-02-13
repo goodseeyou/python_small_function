@@ -228,7 +228,7 @@ class Extractor(object):
             else: 
                 self.base_url_cache[url] = url
                 return url
-                
+
         base_tag = base_tags[0]
         base_href = base_tag.attrs.get('href', '')
         base_url = urljoin(url, base_href)
@@ -262,10 +262,14 @@ class Extractor(object):
 
 
     def get_form_action_list(self):
-        form_tags = self.soup.findAll('form')
-        visible_form_tags = filter(self._tag_visible, form_tags)
+        form_tags = self.get_form_element_list()
         action_urls = self.get_non_empty_attributes_str_list(visible_form_tags, 'action')
         return action_urls
+
+
+    def get_form_element_list(self):
+        form_tags = self.soup.findAll('form')
+        return form_tags
 
 
     def get_img_src_list(self, is_visible=False):
@@ -521,7 +525,7 @@ if __name__ == '__main__':
     #print get_similarity_by_img('http://google.com/','http://google.com', extractor, t_ext)
     #print is_same_icon('http://www.telecomsource.net:80/showthread.php?3121-What-is-reference-signals-in-LTE','http://www.telecomsource.net/',extractor,t_ext)
     #print extractor.get_href_list()
-    print extractor.get_title_list(True)
+    #print extractor.get_title_list(True)
     #print extractor.get_shortcut_icon_list()
     #print extractor.get_stylesheet_href_list()
     #print extractor.get_script_src_list()
@@ -537,3 +541,4 @@ if __name__ == '__main__':
     #print extractor.get_textarea_element_list()
     #print extractor.get_visible_input_tag_element_list(('text', 'image','hidden'), ('hidden', ))
     #print extractor.get_base_url('http://www.schlagernacht.de/de/home/')
+    print extractor.is_email_form()
