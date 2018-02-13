@@ -263,7 +263,7 @@ class Extractor(object):
 
     def get_form_action_list(self):
         form_tags = self.get_form_element_list()
-        action_urls = self.get_non_empty_attributes_str_list(visible_form_tags, 'action')
+        action_urls = self.get_non_empty_attributes_str_list(form_tags, 'action')
         return action_urls
 
 
@@ -289,11 +289,15 @@ class Extractor(object):
 
 
     def does_have_keyword_search(self):
-        return 'search' in self.page_lower
+        return self.does_have_keyword_lower('search')
 
 
     def does_have_keyword_subscri(self):
-        return 'subscri' in self.page_lower
+        return self.does_have_keyword_lower('subscri')
+
+
+    def does_have_keyword_lower(self, keyword):
+        return keyword in self.page_lower
 
 
     def is_email_form(self):
