@@ -43,7 +43,7 @@ meta_cache: meta_cache[input_url] = dict(meta data)
 '''
 class DlerError(Exception): pass
 class Dler(object):
-    def __init__(self, max_connection = 10, cache = None, header_cache = None, meta_cache = None, extractor = None):
+    def __init__(self, max_connection = 10, cache = None, header_cache = None, meta_cache = None, extractor = None, proxy = None):
         self.custom_header = ['Accept-Language:zh-tw,zh-cn,zh-hk,zh-mo,en-us,en-gb,en-ca,fr-fr,de-de,it-it,ja-jp,ru-ru,es-es,pt-br,es-mx,bn-in,da-dk']        
         try:
             self.max_connection = int(max_connection)
@@ -67,6 +67,8 @@ class Dler(object):
             pass
         else:
             signal.signal(SIGPIPE, SIG_IGN)
+
+        self.proxy = proxy
 
 
     def set_extractor(self, extractor):
@@ -272,7 +274,11 @@ class Dler(object):
         c.setopt(c.USERAGENT, user_agent_string)
         c.setopt(c.MAXREDIRS, CURL_OPT_MAX_NUM_REDIRECT)
         c.setopt(c.SSL_VERIFYPEER, 0)
+        c.setopt(c.SSL_VERIFYHOST, 0)
         c.setopt(pycurl.NOSIGNAL, 1)
+
+        if self.proxy is not None:
+            c.setopt(c.PROXY, self.proxy)
 
         return c
 
@@ -486,6 +492,7 @@ class DlerCache(object):
             
 
 if __name__ == '__main__':
+    #dler = Dler(proxy='http://165.84.167.54:8080/')
     dler = Dler()
     #dler.download(['1', '2', '3', '4', '5'])
     print time.time()
