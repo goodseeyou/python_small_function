@@ -51,9 +51,9 @@ class Extractor(object):
         return RE_HREF.findall(self.page_lower)
     def get_title_list(self, case_sensitive=False):
         if case_sensitive:
-            return [title_tag.string for title_tag in self.soup.findAll('title')]
+            return [title_tag.string for title_tag in self.soup.findAll('title') if title_tag.string is not None]
         else:
-            return [title_tag.string.lower() for title_tag in self.soup.findAll('title')]
+            return [title_tag.string.lower() for title_tag in self.soup.findAll('title') if title_tag.string is not None]
     def get_shortcut_icon_list(self):
         return self._get_href_from_tag(RE_SHORTCUT_ICON.findall(self.page_lower))
     def get_stylesheet_href_list(self):
