@@ -75,6 +75,10 @@ class Dler(object):
         self.extractor = extractor
 
 
+    def set_proxy(self, proxy):
+        self.proxy = proxy
+
+
     def clean(self):
         # TODO
         self.dler_cache = DlerCache()
@@ -513,6 +517,6 @@ if __name__ == '__main__':
     dler.download([sys.argv[1]], True, header_only=False)
     #dler.download([sys.argv[1]], True, header_only=False)
     #print dler.dler_cache.get_final_content(sys.argv[1])
-    print dler.dler_cache.content_cache
+    #print dler.dler_cache.content_cache
     print dler.dler_cache.header_cache
     print dler.dler_cache.meta_cache
