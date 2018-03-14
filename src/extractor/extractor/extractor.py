@@ -1,7 +1,7 @@
 import lxml
 from lxml import etree
 from bs4 import BeautifulSoup
-from bs4.element import Comment
+from bs4.element import Comment, Tag
 import re
 from urlparse import urljoin
 from urlparse import urlparse
@@ -116,23 +116,35 @@ class Extractor(object):
     
 
     def _is_hiden(self, element):
-        if not element: return False
+        if not element: 
+            return False
+        elif self.is_hiden_element(element):
+            return True
 
         for parent in element.parents:
-            if not parent: return False
-
-            if parent.name in ('style', 'script', 'head', 'title', 'meta', 'noscript', ):
-                return True
-
-            if parent.name in ('body', 'html', ):
+            if not parent: 
                 return False
-
-            if parent.attrs.get('aria-hidden', '').lower() == 'true':
-                return True
-
-            if RE_DISPLAY_NONE.search(parent.attrs.get('style', '')):
+            elif self.is_hiden_element(parent):
                 return True
     
+        return False
+
+
+    def is_hiden_element(self, element):
+        if not isinstance(element, Tag): return False
+        
+        if element.name in ('style', 'script', 'head', 'title', 'meta', 'noscript', ):
+            return True
+
+        if element.name in ('body', 'html', ):
+            return False
+
+        if element.attrs.get('aria-hidden', '').lower() == 'true':
+            return True
+
+        if RE_DISPLAY_NONE.search(element.attrs.get('style', '')):
+            return True
+
         return False
 
 
