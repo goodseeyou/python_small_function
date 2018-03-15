@@ -57,9 +57,14 @@ class Extractor(object):
     def get_shortcut_icon_list(self):
         return self._get_href_from_tag(RE_SHORTCUT_ICON.findall(self.page_lower))
     def get_stylesheet_href_list(self):
-        return self._get_href_from_tag(RE_STYLESHEET.findall(self.page_lower))
+        link_tag = self.soup.findAll('link')
+        if not link_tag: return []
+        css_tag = filter(lambda tag: tag.attrs.get('rel', '') == 'stylesheet', link_tag)
+        return self.get_non_empty_attributes_str_list(link_tag, 'href')
     def get_script_src_list(self):
-        return self._get_src_from_tag(RE_SCRIPT.findall(self.page_lower))
+        script_tag = self.soup.findAll('script')
+        js_tag = filter(lambda tag: tag.attrs.get('type', '') == 'text/javascript', script_tag)
+        return self.get_non_empty_attributes_str_list(js_tag, 'src')
     # @depreciated
     #def get_img_src_list(self):
     #    return self._get_src_from_tag(RE_IMG.findall(self.page_lower))
@@ -431,7 +436,6 @@ def get_similarity_by_img(url, target_url, url_extractor, target_extractor):
 def _get_similarity_by_extract_function(base_url, target_base_url, url_extract_function, target_extract_function, compare_target=COMPARE_TARGET_FULL):
     if does_has_scheme(base_url) ^ does_has_scheme(target_base_url): raise ExtractorAnalyzeError('base URL and target base URL should have the same format.')
 
-    # use filename to decrease FP [case] "http://012.tw/houvyWZ"
     if compare_target == COMPARE_TARGET_FULL:
         url_extract_collection = [extract_item for extract_item in url_extract_function()]
         target_extract_collection = [extract_item for extract_item in target_extract_function()]
@@ -543,8 +547,8 @@ if __name__ == '__main__':
     #print extractor.get_href_list()
     #print extractor.get_title_list(True)
     #print extractor.get_shortcut_icon_list()
-    #print extractor.get_stylesheet_href_list()
-    #print extractor.get_script_src_list()
+    print extractor.get_stylesheet_href_list()
+    print extractor.get_script_src_list()
     #print extractor.get_img_src_list()
     #print extractor.get_password_input_list()
     #print extractor.get_limited_visible_text_list()
@@ -556,5 +560,7 @@ if __name__ == '__main__':
     #print extractor.get_img_src_list()
     #print extractor.get_textarea_element_list()
     #print extractor.get_visible_input_tag_element_list(('text', 'image','hidden'), ('hidden', ))
-    #print extractor.get_base_url('http://www.schlagernacht.de/de/home/')
-    print extractor.is_email_form()
+    #print extractor.get_base_url('http://normal.spider-test.com/')
+    #print extractor.is_email_form()
+    #print extractor.does_have_keyword_search()
+    
