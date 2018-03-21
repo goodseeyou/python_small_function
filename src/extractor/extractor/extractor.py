@@ -24,6 +24,8 @@ RE_OPTION_TAG = re.compile('<\s*option\s*[^>]+>')
 RE_ENG_NUM_TEXT = re.compile('[0-9a-zA-Z]+')
 RE_DISPLAY_NONE = re.compile('display\s*:\s*[^;]*none')
 RE_URL_FROM_META_REFRESH = re.compile('(URL|url)\s*=\s*(.*)')
+RE_WRITE_UNESCAPE = re.compile('document.write\s*\(\s*unescape\s*\(')
+
 
 STOP_WORD = ('div', 'span', 'input', 'form', 'link', 'script', 'meta', 'style', 'img', 'h1', 'h2', 'h3', 'p', 'br', 'class', 'id', 'tr', 'td', 'label', 'a')
 
@@ -94,6 +96,9 @@ class Extractor(object):
             return [tok.lower().strip() for tok in RE_ENG_NUM_TEXT.findall(self.page_lower) if tok not in STOP_WORD]
         else:
             return [tok.lower().strip() for tok in RE_ENG_NUM_TEXT.findall(text)]
+
+    def does_have_document_write_unescape(self):
+        return RE_WRITE_UNESCAPE.search(self.page_lower) is not None
 
     def _get_href_from_tag(self, tags):
         return self._get_re_result_from_tag(RE_HREF, tags)
