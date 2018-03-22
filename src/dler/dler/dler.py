@@ -310,7 +310,7 @@ class Dler(object):
                     url = url.strip()
                     if url: 
                         return url                   
-            except Exception as e:
+            except (extractor.ExtractorError, UnicodeDecodeError) as e:
                 raise DlerError(e)
         else:
             before_body = RE_BEFORE_BODY.findall(lower_page)

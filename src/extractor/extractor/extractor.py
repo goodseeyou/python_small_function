@@ -45,7 +45,7 @@ class Extractor(object):
         self.base_url_cache = {}
         try:
             self.soup = BeautifulSoup(page, 'lxml')
-        except Exception as e:
+        except (TypeError, ValueError) as e:
             raise ExtractorError('Failed to initialize Extractor due to %s' % e)
         self.page_lower = page.replace('\n', '').lower()
 
