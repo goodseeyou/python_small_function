@@ -43,11 +43,21 @@ class Extractor(object):
     def __init__(self, page):
         if not page: page = ''
         self.base_url_cache = {}
-        try:
-            self.soup = BeautifulSoup(page, 'lxml')
-        except (TypeError, ValueError) as e:
-            raise ExtractorError('Failed to initialize Extractor due to %s' % e)
+        self.page = page
+        self._soup = None
         self.page_lower = page.replace('\n', '').lower()
+
+
+    @property
+    def soup(self):
+        if self._soup is None:
+            try:
+                self._soup = BeautifulSoup(self.page, 'lxml')
+            except (TypeError, ValueError) as e:
+                raise ExtractorError('Failed to initialize Extractor due to %s' % e)
+            
+        return self._soup
+
 
     def get_href_list(self):
         return RE_HREF.findall(self.page_lower)
