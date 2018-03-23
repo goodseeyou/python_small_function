@@ -38,7 +38,7 @@ COMPARE_TARGET_FILENAME = 'filename'
 
 
 class ExtractorError(Exception): pass
-class ExtractorAnalyzeError(Exception): pass
+class ExtractorAnalyzeError(ExtractorError): pass
 class Extractor(object):
     def __init__(self, page):
         if not page: page = ''
