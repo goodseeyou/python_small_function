@@ -154,7 +154,11 @@ class Dler(object):
                 url_string_buffer_dict[url] = string_buffer
                 url_header_buffer_dict[url] = header_buffer
 
-                curl_module = self._set_url_curl_module(url, curl_module, remain_timeout, string_buffer, header_buffer, header_only)
+                try:
+                    curl_module = self._set_url_curl_module(url, curl_module, remain_timeout, string_buffer, header_buffer, header_only)
+                except TypeError as e:
+                    raise DlerError('Failed to set curl module', e)
+                    
                 multi_curl.add_handle(curl_module)
 
             while True:
