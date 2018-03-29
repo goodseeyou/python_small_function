@@ -24,7 +24,7 @@ RE_OPTION_TAG = re.compile('<\s*option\s*[^>]+>')
 RE_ENG_NUM_TEXT = re.compile('[0-9a-zA-Z]+')
 RE_DISPLAY_NONE = re.compile('display\s*:\s*[^;]*none')
 RE_URL_FROM_META_REFRESH = re.compile('(URL|url)\s*=\s*(.*)')
-RE_WRITE_UNESCAPE = re.compile('document.write\s*\(\s*unescape\s*\(')
+RE_WRITE_UNESCAPE = re.compile('document.write\s*\(\s*unescape\s*\([^)]+')
 
 
 STOP_WORD = ('div', 'span', 'input', 'form', 'link', 'script', 'meta', 'style', 'img', 'h1', 'h2', 'h3', 'p', 'br', 'class', 'id', 'tr', 'td', 'label', 'a')
@@ -581,4 +581,5 @@ if __name__ == '__main__':
     #print extractor.get_base_url('http://normal.spider-test.com/')
     #print extractor.is_email_form()
     #print extractor.does_have_keyword_search()
+    print extractor.does_have_long_document_write_unescape()
     
