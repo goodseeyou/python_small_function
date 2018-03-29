@@ -107,8 +107,11 @@ class Extractor(object):
         else:
             return [tok.lower().strip() for tok in RE_ENG_NUM_TEXT.findall(text)]
 
-    def does_have_document_write_unescape(self):
-        return RE_WRITE_UNESCAPE.search(self.page_lower) is not None
+    def does_have_long_document_write_unescape(self):
+        result = RE_WRITE_UNESCAPE.search(self.page_lower)
+        txt = result.group(0) if result else ''
+        return result is not None and txt.count('%') > 10
+
 
     def _get_href_from_tag(self, tags):
         return self._get_re_result_from_tag(RE_HREF, tags)

@@ -7,6 +7,8 @@ from urlparse import urljoin
 import re
 import hashlib
 
+import extractor
+
 
 CURL_OPT_MAX_NUM_REDIRECT = 12
 CURL_OPT_USER_AGENT_LIST = [ 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/63.0.3239.84 Safari/537.36', # Windows 10 Chrome 63
@@ -158,7 +160,7 @@ class Dler(object):
                     curl_module = self._set_url_curl_module(url, curl_module, remain_timeout, string_buffer, header_buffer, header_only)
                 except TypeError as e:
                     raise DlerError('Failed to set curl module', e)
-                    
+
                 multi_curl.add_handle(curl_module)
 
             while True:
@@ -313,7 +315,7 @@ class Dler(object):
                 for url in url_extractor.get_meta_refresh_url_list():
                     url = url.strip()
                     if url: 
-                        return url                   
+                        return url
             except (extractor.ExtractorError, UnicodeDecodeError) as e:
                 raise DlerError(e)
         else:
