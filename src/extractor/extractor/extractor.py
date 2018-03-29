@@ -72,7 +72,7 @@ class Extractor(object):
         link_tag = self.soup.findAll('link')
         if not link_tag: return []
         css_tag = filter(lambda tag: tag.attrs.get('rel', '') == 'stylesheet', link_tag)
-        return self.get_non_empty_attributes_str_list(link_tag, 'href')
+        return self.get_non_empty_attributes_str_list(css_tag, 'href')
     def get_script_src_list(self):
         script_tag = self.soup.findAll('script')
         js_tag = filter(lambda tag: tag.attrs.get('type', '') == 'text/javascript', script_tag)
