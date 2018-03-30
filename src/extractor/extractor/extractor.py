@@ -71,11 +71,11 @@ class Extractor(object):
     def get_stylesheet_href_list(self):
         link_tag = self.soup.findAll('link')
         if not link_tag: return []
-        css_tag = filter(lambda tag: ''.join(tag.attrs.get('rel', [])) == 'stylesheet', link_tag)
+        css_tag = filter(lambda tag: ''.join(tag.attrs.get('rel', [])).lower() == 'stylesheet', link_tag)
         return self.get_non_empty_attributes_str_list(css_tag, 'href')
     def get_script_src_list(self):
         script_tag = self.soup.findAll('script')
-        js_tag = filter(lambda tag: tag.attrs.get('type', '') == 'text/javascript', script_tag)
+        js_tag = filter(lambda tag: tag.attrs.get('type', '').lower() == 'text/javascript', script_tag)
         return self.get_non_empty_attributes_str_list(js_tag, 'src')
     # @depreciated
     #def get_img_src_list(self):
