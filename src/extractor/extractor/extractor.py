@@ -61,22 +61,44 @@ class Extractor(object):
 
     def get_href_list(self):
         return RE_HREF.findall(self.page_lower)
+
+
     def get_title_list(self, case_sensitive=False):
         if case_sensitive:
             return [title_tag.string for title_tag in self.soup.findAll('title') if title_tag.string is not None]
         else:
             return [title_tag.string.lower() for title_tag in self.soup.findAll('title') if title_tag.string is not None]
+
+
     def get_shortcut_icon_list(self):
         return self._get_href_from_tag(RE_SHORTCUT_ICON.findall(self.page_lower))
+
+
     def get_stylesheet_href_list(self):
         link_tag = self.soup.findAll('link')
         if not link_tag: return []
         css_tag = filter(lambda tag: ''.join(tag.attrs.get('rel', [])).lower() == 'stylesheet', link_tag)
         return self.get_non_empty_attributes_str_list(css_tag, 'href')
+
+
     def get_script_src_list(self):
         script_tag = self.soup.findAll('script')
         js_tag = filter(lambda tag: tag.attrs.get('type', '').lower() == 'text/javascript', script_tag)
         return self.get_non_empty_attributes_str_list(js_tag, 'src')
+
+
+    def get_div_style_attributes_key_tuple_list(self, threshold=3):
+        div_tag = self.soup.findAll('div')
+        if not div_tag: return []
+        div_attr_tuple_list = []
+        for tag in div_tag:
+            if not tag: continue
+            item = tuple(key for key in sorted(set(tok.split(":")[0].strip() for tok in tag.attrs.get('style', '').split(";"))) if key)
+            if len(item) >= threshold:
+                div_attr_tuple_list.append(item)
+        return div_attr_tuple_list
+
+
     # @depreciated
     #def get_img_src_list(self):
     #    return self._get_src_from_tag(RE_IMG.findall(self.page_lower))
@@ -435,6 +457,10 @@ def _does_has_same_item(iter_a, iter_b):
     return False
 
 
+def get_similarity_by_div_style(url, target_url, url_extractor, target_extractor):
+    return _get_similarity_by_extract_function(url_extractor.get_base_url(url), target_extractor.get_base_url(target_url), url_extractor.get_div_style_attributes_key_tuple_list, target_extractor.get_div_style_attributes_key_tuple_list, compare_target=COMPARE_TARGET_FULL)
+
+
 def get_similarity_by_stylesheet(url, target_url, url_extractor, target_extractor):
     return _get_similarity_by_extract_function(url_extractor.get_base_url(url), target_extractor.get_base_url(target_url), url_extractor.get_stylesheet_href_list, target_extractor.get_stylesheet_href_list, compare_target=COMPARE_TARGET_PATH_NO_QUERY)
 
@@ -565,8 +591,8 @@ if __name__ == '__main__':
     #print extractor.get_href_list()
     #print extractor.get_title_list(True)
     #print extractor.get_shortcut_icon_list()
-    print extractor.get_stylesheet_href_list()
-    print extractor.get_script_src_list()
+    #print extractor.get_stylesheet_href_list()
+    #print extractor.get_script_src_list()
     #print extractor.get_img_src_list()
     #print extractor.get_password_input_list()
     #print extractor.get_limited_visible_text_list()
@@ -581,5 +607,7 @@ if __name__ == '__main__':
     #print extractor.get_base_url('http://normal.spider-test.com/')
     #print extractor.is_email_form()
     #print extractor.does_have_keyword_search()
-    print extractor.does_have_long_document_write_unescape()
+    #print extractor.does_have_long_document_write_unescape()
+    print extractor.get_div_style_attributes_key_tuple_list()
+
     
