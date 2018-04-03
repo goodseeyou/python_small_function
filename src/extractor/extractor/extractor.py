@@ -5,6 +5,7 @@ from bs4.element import Comment, Tag
 import re
 from urlparse import urljoin
 from urlparse import urlparse
+import urllib
 
 
 RE_A_TAG_HREF = re.compile('<\s*a\s+[^>]*\s+href\s*=\s*[\'"]([^\'"]*)[\'"]')
@@ -24,7 +25,7 @@ RE_OPTION_TAG = re.compile('<\s*option\s*[^>]+>')
 RE_ENG_NUM_TEXT = re.compile('[0-9a-zA-Z]+')
 RE_DISPLAY_NONE = re.compile('display\s*:\s*[^;]*none')
 RE_URL_FROM_META_REFRESH = re.compile('(URL|url)\s*=\s*(.*)')
-RE_WRITE_UNESCAPE = re.compile('document.write\s*\(\s*unescape\s*\([^)]+')
+RE_WRITE_UNESCAPE = re.compile('document.write\s*\(\s*unescape\s*\(([^)]+)')
 
 
 STOP_WORD = ('div', 'span', 'input', 'form', 'link', 'script', 'meta', 'style', 'img', 'h1', 'h2', 'h3', 'p', 'br', 'class', 'id', 'tr', 'td', 'label', 'a')
@@ -129,10 +130,14 @@ class Extractor(object):
         else:
             return [tok.lower().strip() for tok in RE_ENG_NUM_TEXT.findall(text)]
 
-    def does_have_long_document_write_unescape(self, threshold=15):
-        result = RE_WRITE_UNESCAPE.search(self.page_lower)
-        txt = result.group(0) if result else ''
-        return result is not None and txt.count('%') > threshold
+
+    def does_have_form_document_write_unescape(self):
+        result = RE_WRITE_UNESCAPE.findall(self.page_lower)
+        for item in result:
+            unquoted_string = urllib.unquote(item)
+            if '<form' in unquoted_string or '<input' in unquoted_string: return True
+
+        return False
 
 
     def _get_href_from_tag(self, tags):
@@ -607,7 +612,7 @@ if __name__ == '__main__':
     #print extractor.get_base_url('http://normal.spider-test.com/')
     #print extractor.is_email_form()
     #print extractor.does_have_keyword_search()
-    #print extractor.does_have_long_document_write_unescape()
-    print extractor.get_div_style_attributes_key_tuple_list()
+    print extractor.does_have_form_document_write_unescape()
+    #print extractor.get_div_style_attributes_key_tuple_list()
 
     
