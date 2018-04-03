@@ -47,7 +47,7 @@ class Extractor(object):
         self.page = page
         self._soup = None
         self.page_lower = page.replace('\n', '').lower()
-
+        
 
     @property
     def soup(self):
@@ -344,7 +344,7 @@ class Extractor(object):
 
     def is_xml_format(self):
         try:
-            etree.fromstring(self.page_lower)
+            etree.fromstring(self.page)
             return True
         except lxml.etree.XMLSyntaxError as e:
             return False    
@@ -612,7 +612,7 @@ if __name__ == '__main__':
     #print extractor.get_base_url('http://normal.spider-test.com/')
     #print extractor.is_email_form()
     #print extractor.does_have_keyword_search()
-    print extractor.does_have_form_document_write_unescape()
+    #print extractor.does_have_form_document_write_unescape()
     #print extractor.get_div_style_attributes_key_tuple_list()
-
+    print extractor.is_xml_format()
     
