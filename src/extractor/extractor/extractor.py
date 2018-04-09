@@ -84,7 +84,7 @@ class Extractor(object):
 
     def get_script_src_list(self):
         script_tag = self.soup.findAll('script')
-        js_tag = filter(lambda tag: tag.attrs.get('type', '').lower() == 'text/javascript', script_tag)
+        js_tag = filter(lambda tag: tag.attrs.get('type', 'text/javascript').lower() == 'text/javascript', script_tag)
         return self.get_non_empty_attributes_str_list(js_tag, 'src')
 
 
