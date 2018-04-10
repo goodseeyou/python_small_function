@@ -72,7 +72,10 @@ class Extractor(object):
 
 
     def get_shortcut_icon_list(self):
-        return self._get_href_from_tag(RE_SHORTCUT_ICON.findall(self.page_lower))
+        link_tag = self.soup.findAll('link')
+        if not link_tag: return []
+        icon_tag = filter(lambda tag: ''.join(tag.attrs.get('rel', [])).lower() == 'shortcuticon', link_tag)
+        return self.get_non_empty_attributes_str_list(icon_tag, 'href')
 
 
     def get_stylesheet_href_list(self):
@@ -595,7 +598,7 @@ if __name__ == '__main__':
     #print is_same_icon('http://www.telecomsource.net:80/showthread.php?3121-What-is-reference-signals-in-LTE','http://www.telecomsource.net/',extractor,t_ext)
     #print extractor.get_href_list()
     #print extractor.get_title_list(True)
-    #print extractor.get_shortcut_icon_list()
+    print extractor.get_shortcut_icon_list()
     #print extractor.get_stylesheet_href_list()
     #print extractor.get_script_src_list()
     #print extractor.get_img_src_list()
