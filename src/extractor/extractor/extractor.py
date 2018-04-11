@@ -97,7 +97,7 @@ class Extractor(object):
         div_attr_tuple_list = []
         for tag in div_tag:
             if not tag: continue
-            item = tuple(key for key in sorted(set(tok.split(":")[0].strip() for tok in tag.attrs.get('style', '').split(";"))) if key)
+            item = tuple(key for key in sorted(set(tok.split(":")[0].lower().strip() for tok in tag.attrs.get('style', '').split(";"))) if key)
             if len(item) >= threshold:
                 div_attr_tuple_list.append(item)
         return div_attr_tuple_list
@@ -195,7 +195,7 @@ class Extractor(object):
         if element.attrs.get('aria-hidden', '').lower() == 'true':
             return True
 
-        if RE_DISPLAY_NONE.search(element.attrs.get('style', '')):
+        if RE_DISPLAY_NONE.search(element.attrs.get('style', '').lower()):
             return True
 
         return False
@@ -272,12 +272,12 @@ class Extractor(object):
         if type_tuple is not None:
             if not isinstance(type_tuple, tuple):
                 raise ExtractorError('type_tuple should be type of tuple but %s is %s' % (type_tuple, type(type_tuple)))
-            visible_input_tags = filter(lambda tag:tag.attrs.get('type', 'text') in type_tuple, visible_input_tags[:])
+            visible_input_tags = filter(lambda tag:tag.attrs.get('type', 'text').lower() in type_tuple, visible_input_tags[:])
 
         if exclude_type_tuple is not None:
             if not isinstance(exclude_type_tuple, tuple):
                 raise ExtractorError('exclude_type_tuple should be type of tuple but %s is %s' % (exclude_type_tuple, type(exclude_type_tuple)))
-            visible_input_tags = filter(lambda tag: not tag.attrs.get('type', 'text') in exclude_type_tuple, visible_input_tags[:])
+            visible_input_tags = filter(lambda tag: not tag.attrs.get('type', 'text').lower() in exclude_type_tuple, visible_input_tags[:])
 
         return visible_input_tags
 
@@ -595,10 +595,10 @@ if __name__ == '__main__':
         t_ext = Extractor(data.read())
     #'''
     #print get_similarity_by_img('http://google.com/','http://google.com', extractor, t_ext)
-    #print is_same_icon('http://www.telecomsource.net:80/showthread.php?3121-What-is-reference-signals-in-LTE','http://www.telecomsource.net/',extractor,t_ext)
+    #print is_same_icon('http://webadmin.firstsoftwaresolutions.com/components/grids/j_security_check','http://webadmin.firstsoftwaresolutions.com/',extractor,t_ext)
     #print extractor.get_href_list()
     #print extractor.get_title_list(True)
-    print extractor.get_shortcut_icon_list()
+    #print extractor.get_shortcut_icon_list()
     #print extractor.get_stylesheet_href_list()
     #print extractor.get_script_src_list()
     #print extractor.get_img_src_list()
