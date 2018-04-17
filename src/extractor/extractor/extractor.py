@@ -393,7 +393,8 @@ def _reduced_normalize_url(url, keep_frag=False):
     tok = urlparse(url)
 
     port = tok.port
-    domain = tok.hostname.strip('[]')
+    # hostname might be None
+    domain = tok.hostname.strip('[]') if tok.hostname else ''
 
     path = tok.path
     query = tok.query
