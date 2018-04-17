@@ -284,7 +284,7 @@ class Dler(object):
         c.setopt(c.USERAGENT, user_agent_string)
         c.setopt(c.MAXREDIRS, CURL_OPT_MAX_NUM_REDIRECT)
         c.setopt(c.SSL_VERIFYPEER, 0)
-        c.setopt(c.SSL_VERIFYHOST, 0)
+        #c.setopt(c.SSL_VERIFYHOST, 0)
         c.setopt(pycurl.NOSIGNAL, 1)
 
         if self.proxy is not None:
