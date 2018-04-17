@@ -3,7 +3,7 @@ from lxml import etree
 from bs4 import BeautifulSoup
 from bs4.element import Comment, Tag
 import re
-from urlparse import urljoin
+from urlparse import urljoin as original_urljoin
 from urlparse import urlparse
 import urllib
 
@@ -389,22 +389,23 @@ def get_path_level_len(url):
     return len_path_level
     
 
-def _reduced_normalize_url(url):
+def _reduced_normalize_url(url, keep_frag=False):
     tok = urlparse(url)
 
-    netloc_tok = tok.netloc.split(":")
-    if netloc_tok[-1].isdigit():
-        port = netloc_tok[-1]
-        domain = ':'.join(netloc_tok[:-1])
-    else:
-        port = ''
-        domain = ':'.join(netloc_tok)
-    domain = domain.strip('[]')
+    port = tok.port
+    domain = tok.hostname.strip('[]')
 
     path = tok.path
     query = tok.query
+    fragment_prfix = '#' if url.endswith('#') or tok.fragment else ''
+    fragment = tok.fragment
 
-    return '%s%s?%s' % (domain, path, query)
+    if keep_frag:
+        normalized_url = '%s%s?%s%s%s' % (domain, path, query, fragment_prfix, fragment)
+    else:
+        normalized_url = '%s%s?%s' % (domain, path, query)
+
+    return normalized_url
 
 
 def trim_www(_str):
@@ -417,9 +418,9 @@ def trim_www(_str):
     return _str
 
 
-def is_reduced_equal(url, target, does_trim=False):
-    url = _reduced_normalize_url(url).strip()
-    target = _reduced_normalize_url(target).strip()
+def is_reduced_equal(url, target, does_trim=False, keep_frag=False):
+    url = _reduced_normalize_url(url, keep_frag=keep_frag).strip()
+    target = _reduced_normalize_url(target, keep_frag=keep_frag).strip()
 
     if does_trim:
         url = url.split("?")[0].strip()
@@ -584,6 +585,14 @@ def parse_top_level_domain(file_path):
     return tld_list
 
 
+def urljoin(base, appendix):
+    appendix = appendix.strip()
+    if appendix == '#':
+        return '%s%s'%(base, appendix)
+    else:
+        return original_urljoin(base, appendix)
+
+
 if __name__ == '__main__':
     import sys
     #'''
@@ -617,5 +626,5 @@ if __name__ == '__main__':
     #print extractor.does_have_keyword_search()
     #print extractor.does_have_form_document_write_unescape()
     #print extractor.get_div_style_attributes_key_tuple_list()
-    print extractor.is_xml_format()
-    
+    #print extractor.is_xml_format()
+    print extractor.text_from_html()
