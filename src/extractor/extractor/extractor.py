@@ -26,11 +26,13 @@ RE_ENG_NUM_TEXT = re.compile('[0-9a-zA-Z]+')
 RE_DISPLAY_NONE = re.compile('display\s*:\s*[^;]*none')
 RE_URL_FROM_META_REFRESH = re.compile('(URL|url)\s*=\s*(.*)')
 RE_WRITE_UNESCAPE = re.compile('document.write\s*\(\s*unescape\s*\(([^)]+)')
+RE_CHARSET = re.compile('<meta\s+[^<]*content\s*=[\'"][^\'"]*charset\s*=([-_0-9a-zA-Z]+)\s*[^\'"]*[\'"][^<]*>')
 
 
 STOP_WORD = ('div', 'span', 'input', 'form', 'link', 'script', 'meta', 'style', 'img', 'h1', 'h2', 'h3', 'p', 'br', 'class', 'id', 'tr', 'td', 'label', 'a')
 
 DEFAULT_SHORTCUT_ICON = 'favicon.ico'
+DEFAULT_CHARSET = 'utf-8'
 
 COMPARE_TARGET_FULL = 'full'
 COMPARE_TARGET_PATH_NO_QUERY = 'path_no_query'
@@ -47,7 +49,19 @@ class Extractor(object):
         self.page = page
         self._soup = None
         self.page_lower = page.replace('\n', '').lower()
+        self.charset = self.get_charset()
+        if not self.charset: self.charset = DEFAULT_CHARSET
+        if not isinstance(self.page_lower, unicode): self.page_lower = unicode(self.page_lower, self.charset)
         
+
+    def get_charset(self):
+        #by rex for performance
+        re_result = RE_CHARSET.search(self.page_lower)
+        if re_result:
+            return re_result.group(1)
+
+        return None
+
 
     @property
     def soup(self):
@@ -628,4 +642,5 @@ if __name__ == '__main__':
     #print extractor.does_have_form_document_write_unescape()
     #print extractor.get_div_style_attributes_key_tuple_list()
     #print extractor.is_xml_format()
-    print extractor.text_from_html()
+    #print extractor.text_from_html()
+    print extractor.get_charset()
