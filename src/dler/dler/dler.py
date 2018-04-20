@@ -317,7 +317,7 @@ class Dler(object):
                     if url: 
                         return url
             except (extractor.ExtractorError, UnicodeDecodeError) as e:
-                raise DlerError(e)
+                return None
         else:
             before_body = RE_BEFORE_BODY.findall(lower_page)
             page = ' '.join(before_body) if before_body else lower_page
