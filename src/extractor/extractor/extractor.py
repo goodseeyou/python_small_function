@@ -51,7 +51,7 @@ class Extractor(object):
         self.page_lower = page.replace('\n', '').lower()
         self.charset = self.get_charset()
         if not self.charset: self.charset = DEFAULT_CHARSET
-        if not isinstance(self.page_lower, unicode): self.page_lower = unicode(self.page_lower, self.charset)
+        if not isinstance(self.page_lower, unicode): self.page_lower = unicode(self.page_lower, encoding=self.charset, errors='replace')
         
 
     def get_charset(self):
