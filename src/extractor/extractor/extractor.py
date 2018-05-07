@@ -7,7 +7,7 @@ from urlparse import urljoin as original_urljoin
 from urlparse import urlparse
 import urllib
 
-
+RE_HTML = re.compile('<\s*html(\s+[^>]*)?>')
 RE_A_TAG_HREF = re.compile('<\s*a\s+[^>]*\s+href\s*=\s*[\'"]([^\'"]*)[\'"]')
 RE_HREF = re.compile('<\s*[^>]+\s+href\s*=\s*[\'"]([^\'"]*)[\'"]')
 RE_SRC = re.compile('<\s*[^>]+\s+src\s*=\s*[\'"]([^\'"]*)[\'"]')
@@ -364,7 +364,12 @@ class Extractor(object):
             etree.fromstring(self.page)
             return True
         except lxml.etree.XMLSyntaxError as e:
-            return False    
+            return False
+
+
+    def does_have_html_tag(self):
+        res = True if RE_HTML.search(self.page_lower) else False
+        return res
 
 
     def does_have_keyword_search(self):
@@ -643,4 +648,5 @@ if __name__ == '__main__':
     #print extractor.get_div_style_attributes_key_tuple_list()
     #print extractor.is_xml_format()
     #print extractor.text_from_html()
-    print extractor.get_charset()
+    #print extractor.get_charset()
+    print extractor.does_have_html_tag()
