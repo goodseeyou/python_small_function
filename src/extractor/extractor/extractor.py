@@ -149,10 +149,10 @@ class Extractor(object):
 
 
     def does_have_form_document_write_unescape(self):
-        result = RE_WRITE_UNESCAPE.findall(self.page_lower)
-        for item in result:
-            unquoted_string = urllib.unquote(item)
-            if '<form' in unquoted_string or '<input' in unquoted_string: return True
+        result = RE_WRITE_UNESCAPE.search(self.page_lower)
+        if result:
+            unquoted_string = urllib.unquote(self.page_lower)
+            return '<form' in unquoted_string or '<input' in unquoted_string
 
         return False
 
