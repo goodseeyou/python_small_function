@@ -48,19 +48,28 @@ class Extractor(object):
         self.base_url_cache = {}
         self.page = page
         self._soup = None
-        self.page_lower = page.replace('\n', '').lower()
+        self._page_lower = None
         self.charset = self.get_charset()
         if not self.charset: self.charset = DEFAULT_CHARSET
-        if not isinstance(self.page_lower, unicode): self.page_lower = unicode(self.page_lower, encoding=self.charset, errors='replace')
         
 
     def get_charset(self):
         #by rex for performance
-        re_result = RE_CHARSET.search(self.page_lower)
+        re_result = RE_CHARSET.search(self.page, re.IGNORECASE)
         if re_result:
-            return re_result.group(1)
+            return re_result.group(1).lower()
 
         return None
+
+
+    @property
+    def page_lower(self):
+        if self._page_lower is None:
+            self._page_lower = self.page.replace('\n', '').lower()
+            if not isinstance(self._page_lower, unicode):
+                self._page_lower = unicode(self._page_lower, encoding=self.charset, errors='replace')
+
+        return self._page_lower
 
 
     @property
