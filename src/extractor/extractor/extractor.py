@@ -158,12 +158,19 @@ class Extractor(object):
 
 
     def does_have_form_document_write_unescape(self):
-        result = RE_WRITE_UNESCAPE.search(self.page_lower)
-        if result:
-            unquoted_string = urllib.unquote(self.page_lower)
-            return '<form' in unquoted_string or '<input' in unquoted_string
+        quoted_string_list = RE_WRITE_UNESCAPE.findall(self.page_lower)
+        if not quoted_string_list: return False
 
-        return False
+        raw_string = ' '.join(quoted_string_list)
+        while True:
+            try:
+                unquoted_string = urllib.unquote(raw_string)
+                if unquoted_string == raw_string: break
+                raw_string = unquoted_string
+            except KeyError:
+                break
+
+        return '<form' in unquoted_string and '<input' in unquoted_string
 
 
     def _get_href_from_tag(self, tags):
