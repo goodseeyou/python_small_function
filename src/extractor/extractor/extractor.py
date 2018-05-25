@@ -362,6 +362,11 @@ class Extractor(object):
         return action_urls
 
 
+    def does_have_action_attribute_form(self):
+        form_tags = self.get_form_element_list()
+        return True if self.get_attributes_str_list(form_tags, 'action', does_accept_empty=True) else False
+
+
     def get_form_element_list(self):
         form_tags = self.soup.findAll('form')
         return form_tags
