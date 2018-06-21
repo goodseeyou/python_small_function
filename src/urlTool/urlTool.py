@@ -33,6 +33,10 @@ class UrlModule(object):
  
 def get_splited_tokens_from_line(string, dividor, is_tail=False):
     dividor_index = string.rfind(dividor) if is_tail else string.find(dividor)
+    
+    if dividor_index < 0:
+        return string, ''
+
     try:
         return string[:dividor_index], string[dividor_index+1:]
     except IndexError:
