@@ -11,7 +11,7 @@ class UrlModule(object):
 
 
     @property
-    def url_tok(self)
+    def url_tok(self):
         if self._url_tok is None:
             self._url_tok = urlparse(self.url)
         return self._url_tok
@@ -19,7 +19,7 @@ class UrlModule(object):
 
     @property
     def query_dict(self):
-        if self._query_dict = None:
+        if self._query_dict is None:
             for tmp_pair in self.url_tok.query.split("&"):
                 key, value = get_splited_tokens_from_line(tmp_pair, '=')
                 self._query_dict[key] = value

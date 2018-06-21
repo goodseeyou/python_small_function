@@ -1,1 +1,1 @@
-from .urlTool import UrlTool
+from .urlTool import UrlModule
