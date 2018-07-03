@@ -4,6 +4,7 @@ from string import maketrans
 TRANS_NUMBER_TO_ZERO = maketrans(''.join([str(i) for i in range(10)]), ''.join((str(0),)*10))
 PREFIX_LENGTH = 8
 
+class UrlModuleError(Exception): pass
 class UrlModule(object):
     _url_tok = None
     _query_dict = None
@@ -16,7 +17,11 @@ class UrlModule(object):
     @property
     def url_tok(self):
         if self._url_tok is None:
-            self._url_tok = urlparse(self.url)
+            try:
+                self._url_tok = urlparse(self.url)
+            except ValueError as e:
+                raise UrlModuleError(e)
+
         return self._url_tok
 
 
@@ -43,7 +48,7 @@ class UrlModule(object):
         return [tok.strip() for tok in hostname.split(".") if tok.strip()]
 
 
-    def get_path_token_list(self, is_normalize=False):
+    def get_path_token_list(self, is_normalize=False, append_file_extension=True):
         if is_normalize:
             path = self._token_normalize(self.url_tok.path)
         else:
@@ -54,14 +59,14 @@ class UrlModule(object):
             path_token = ['/%s/'%tok.strip() for tok in path_tok[:-1] if tok.strip()]
             last_tok = path_tok[-1].strip()
             if last_tok:
-                dot_index = last_tok.rfind('.')
-                if dot_index > 0:
-                    filename, file_extension = last_tok[:dot_index], last_tok[dot_index:]
-                    path_token.append(filename)
-                    path_token.append(file_extension)
-                else:
-                    filename = last_tok
-                    path_token.append(filename)
+                path_token.append(last_tok)
+
+                if append_file_extension:
+                    dot_index = last_tok.rfind('.')
+                    if dot_index > 0: 
+                        filename, file_extension = last_tok[:dot_index], last_tok[dot_index:]
+                        path_token.append(file_extension)
+                    
         else:
             path_token = ['/%s/'%tok.strip() for tok in path_tok if tok.strip()]
         
