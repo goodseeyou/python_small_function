@@ -1,18 +1,18 @@
 from urlparse import urlparse
 from string import maketrans
+import socket
 
-TRANS_NUMBER_TO_ZERO = maketrans(''.join([str(i) for i in range(10)]), ''.join((str(0),)*10))
+TRANS_NUMBER_TO_ZERO = maketrans(''.join((str(i) for i in range(10))), ''.join((str(0),)*10))
 PREFIX_LENGTH = 8
+
 
 class UrlModuleError(Exception): pass
 class UrlModule(object):
     _url_tok = None
     _query_dict = None
 
-
     def __init__(self, url):
         self.url = url
-
 
     @property
     def url_tok(self):
@@ -23,7 +23,6 @@ class UrlModule(object):
                 raise UrlModuleError(e)
 
         return self._url_tok
-
 
     @property
     def query_dict(self):
@@ -38,25 +37,26 @@ class UrlModule(object):
 
         return self._query_dict
 
-
     def get_hostname_token_list(self, is_normalize=False, is_prefix_value=False):
         if is_normalize:
-            hostname = self._token_normalize(self.url_tok.hostname)
+            hostname = token_normalize(self.url_tok.hostname)
         else:
             hostname = self.url_tok.hostname
 
-        return [tok.strip() for tok in hostname.split(".") if tok.strip()]
-
+        if is_prefix_value:
+            return [tok.strip()[:PREFIX_LENGTH] for tok in hostname.split(".") if tok.strip()]
+        else:
+            return [tok.strip() for tok in hostname.split(".") if tok.strip()]
 
     def get_path_token_list(self, is_normalize=False, append_file_extension=True):
         if is_normalize:
-            path = self._token_normalize(self.url_tok.path)
+            path = token_normalize(self.url_tok.path)
         else:
             path = self.url_tok.path
 
         path_tok = path.split("/")
         if not path.endswith('/'):
-            path_token = ['/%s/'%tok.strip() for tok in path_tok[:-1] if tok.strip()]
+            path_token = ['/%s/' % tok.strip() for tok in path_tok[:-1] if tok.strip()]
             last_tok = path_tok[-1].strip()
             if last_tok:
                 path_token.append(last_tok)
@@ -68,28 +68,30 @@ class UrlModule(object):
                         path_token.append(file_extension)
                     
         else:
-            path_token = ['/%s/'%tok.strip() for tok in path_tok if tok.strip()]
+            path_token = ['/%s/' % tok.strip() for tok in path_tok if tok.strip()]
         
         return path_token
 
-
     def get_query_key_value_list(self, is_normalize=False, is_prefix_value=False):
         if is_normalize:
-            kv_list = [ (self._token_normalize(k), self._token_normalize(self.query_dict[k]))
-                for k in self.query_dict if k]
+            kv_list = [(token_normalize(k), token_normalize(self.query_dict[k])) for k in self.query_dict if k]
         else:
             kv_list = [(k, self.query_dict[k]) for k in self.query_dict if k]
 
         if is_prefix_value:
-            kv_list = [(k,v[:PREFIX_LENGTH]) for k, v in kv_list]
+            kv_list = [(k, v[:PREFIX_LENGTH]) for k, v in kv_list]
 
         return kv_list
 
 
-    def _token_normalize(self, text):
-        return text.translate(TRANS_NUMBER_TO_ZERO).strip()
+def token_normalize(text):
+    return translate_digit_to_zero(text)
 
- 
+
+def translate_digit_to_zero(text):
+    return text.translate(TRANS_NUMBER_TO_ZERO).strip()
+
+
 def get_splited_tokens_from_line(text, dividor, is_tail=False):
     dividor_index = text.rfind(dividor) if is_tail else text.find(dividor)
 
@@ -100,4 +102,11 @@ def get_splited_tokens_from_line(text, dividor, is_tail=False):
         return text[:dividor_index], text[dividor_index+1:]
     except IndexError:
         return text[:dividor_index], ''
-    
+
+
+def is_ipv4(addr):
+    raise Exception('NotImplement')
+
+
+def is_ipv6(add):
+    raise Exception('NotImplement')
