@@ -30,7 +30,7 @@ class UrlModule(object):
             self._query_dict = {}
 
             for tmp_pair in self.url_tok.query.split("&"):
-                key, value = get_splited_tokens_from_line(tmp_pair, '=')
+                key, value = get_split_tokens_from_line(tmp_pair, '=')
                 key = key.strip()
                 if not key: continue
                 self._query_dict[key] = value.strip()
@@ -55,21 +55,17 @@ class UrlModule(object):
             path = self.url_tok.path
 
         path_tok = path.split("/")
-        if not path.endswith('/'):
-            path_token = ['/%s/' % tok.strip() for tok in path_tok[:-1] if tok.strip()]
-            last_tok = path_tok[-1].strip()
-            if last_tok:
-                path_token.append(last_tok)
+        last_tok = path_tok[-1].strip()
+        path_token = ['/%s/' % tok.strip() for tok in path_tok[:-1] if tok.strip()]
+        if path.endswith('/'):
+            path_token.append('/%s/' % last_tok)
+        elif last_tok:
+            path_token.append(last_tok)
 
-                if append_file_extension:
-                    dot_index = last_tok.rfind('.')
-                    if dot_index > 0: 
-                        filename, file_extension = last_tok[:dot_index], last_tok[dot_index:]
-                        path_token.append(file_extension)
-                    
-        else:
-            path_token = ['/%s/' % tok.strip() for tok in path_tok if tok.strip()]
-        
+            if append_file_extension:
+                filename, file_extension = get_last_dot_split_tuple(last_tok)
+                if file_extension: path_token.append(file_extension)
+
         return path_token
 
     def get_query_key_value_list(self, is_normalize=False, is_prefix_value=False):
@@ -83,6 +79,18 @@ class UrlModule(object):
 
         return kv_list
 
+    def is_ip(self):
+        return is_ip(self.url_tok.hostname)
+
+
+def get_last_dot_split_tuple(text):
+    dot_index = text.rfind('.')
+    if dot_index > 0:
+        left_part, right_part_with_dot = text[:dot_index], text[dot_index:]
+        return left_part, right_part_with_dot
+
+    return text, ''
+
 
 def token_normalize(text):
     return translate_digit_to_zero(text)
@@ -92,7 +100,7 @@ def translate_digit_to_zero(text):
     return text.translate(TRANS_NUMBER_TO_ZERO).strip()
 
 
-def get_splited_tokens_from_line(text, dividor, is_tail=False):
+def get_split_tokens_from_line(text, dividor, is_tail=False):
     dividor_index = text.rfind(dividor) if is_tail else text.find(dividor)
 
     if dividor_index < 0:
@@ -104,9 +112,32 @@ def get_splited_tokens_from_line(text, dividor, is_tail=False):
         return text[:dividor_index], ''
 
 
-def is_ipv4(addr):
-    raise Exception('NotImplement')
+def is_ipv4(_ip):
+    try:
+        socket.inet_pton(socket.AF_INET, _ip)
+        return True
+    except socket.error:
+        return False
 
 
-def is_ipv6(add):
-    raise Exception('NotImplement')
+def is_ipv6(_ip):
+    try:
+        socket.inet_pton(socket.AF_INET6, _ip)
+        return True
+    except socket.error:
+        return False
+
+
+def is_ip(addr):
+    netloc_toks = addr.split(":")
+    len_netloc_toks = len(netloc_toks)
+
+    if len_netloc_toks > 2:
+        if '[' in addr and ']' in addr and netloc_toks[-1].isdigit():
+            return is_ipv6(':'.join(netloc_toks[:-1]).strip('[]'))
+        else:
+            return is_ipv6(addr)
+    if len_netloc_toks == 2 and netloc_toks[-1].isdigit():
+        return is_ipv4(netloc_toks[0])
+    else:
+        return is_ipv4(addr)
