@@ -1,10 +1,13 @@
 from urlparse import urlparse
 from string import maketrans
 import socket
+import re
 
 TRANS_NUMBER_TO_ZERO = maketrans(''.join((str(i) for i in range(10))), ''.join((str(0),)*10))
 PREFIX_LENGTH = 8
+THRESHOLD_FILE_EXTENSION = 5
 
+RE_ALPHA_DIGIT = re.compile('^[0-9a-zA-Z]+$')
 
 class UrlModuleError(Exception):
     pass
@@ -13,6 +16,7 @@ class UrlModuleError(Exception):
 class UrlModule(object):
     _url_attr = None
     _query_dict = None
+    _file_extension = None
 
     def __init__(self, url):
         self.url = url.strip()
@@ -40,6 +44,20 @@ class UrlModule(object):
                 self._query_dict[key] = value.strip()
 
         return self._query_dict
+
+    @property
+    def file_extension(self):
+        if self._file_extension is None:
+            _, self.file_extension = get_last_dot_split_tuple(self.url_attr.path)
+
+        return self._file_extension
+
+    @file_extension.setter
+    def file_extension(self, value):
+        if all((value.startswith('.'), is_alpha_digit(value[1:]), len(value[1:]) <= THRESHOLD_FILE_EXTENSION)):
+            self._file_extension = value.lower()
+        else:
+            self._file_extension = ''
 
     def get_hostname_token_list(self, is_normalize=False, is_prefix_value=False):
         if self.url_attr.hostname is None:
@@ -81,6 +99,7 @@ class UrlModule(object):
 
             if append_file_extension:
                 filename, file_extension = get_last_dot_split_tuple(last_tok)
+                self.file_extension = file_extension
                 if file_extension:
                     path_token.append(file_extension)
 
@@ -162,3 +181,7 @@ def is_ip(addr):
         return is_ipv4(netloc_toks[0])
     else:
         return is_ipv4(addr)
+
+
+def is_alpha_digit(string):
+    return not RE_ALPHA_DIGIT.search(string) is None
